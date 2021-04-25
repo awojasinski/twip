@@ -5,8 +5,6 @@ on: [push, pull_request]
 env:
   BUILD_TYPE: Debug
 
-workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -27,4 +25,3 @@ jobs:
           build/bin
           build/app/*.map
         retention-days: 7
-
