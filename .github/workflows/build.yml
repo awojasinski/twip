@@ -5,26 +5,23 @@ on: [push, pull_request]
 env:
   BUILD_TYPE: Debug
 
-workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: awojasinski:stm32_cmake-latest
+      image: awojasinski/stm32_cmake:latest
     steps:
     - name: Checkout
       uses: actions/checkout@v2
     - name: Build project
       run: |
-      cmake -B ./build -S . -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain-m4.cmake
-      cmake --build ./build --parallel
-    - name: Archive production artefacts
-      uses: actions/upload-artifacts@v2
+        cmake -B ./build -S . -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain-m4.cmake
+        cmake --build ./build --parallel
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v2
       with:
-        name: artefacts
+        name: artifacts
         path: |
           build/bin
           build/app/*.map
         retention-days: 7
-
