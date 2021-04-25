@@ -31,4 +31,4 @@ target_sources(hal
         ${HAL_SOURCES}
 )
 
-utils_target_set_linker_script(hal ${CMAKE_CURRENT_SOURCE_DIR}/STM32G431KBTX_FLASH.ld)
+utils_target_set_linker_script(hal ${CMAKE_CURRENT_SOURCE_DIR}/STM32G431KBTx_FLASH.ld)
