@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: awojasinski:stm32_cmake-latest
+      image: awojasinski/stm32_cmake:latest
     steps:
     - name: Checkout
       uses: actions/checkout@v2
