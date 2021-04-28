@@ -4,7 +4,6 @@
 #include "spi.h"
 #include "tim.h"
 #include "usart.h"
-#include "wwdg.h"
 #include "gpio.h"
 
 
@@ -15,17 +14,21 @@ int main(void)
   HAL_Init();
   SystemClock_Config();
 
+  HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_0);
+  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
+
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_RTC_Init();
   MX_TIM1_Init();
   MX_USART1_UART_Init();
   MX_SPI1_Init();
-  MX_WWDG_Init();
-  
+
+
   while (1)
   {
-
+    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+    HAL_Delay(500);
   }
 
 }
@@ -111,6 +114,8 @@ void Error_Handler(void)
   */
 void assert_failed(uint8_t *file, uint32_t line)
 {
+  (void)file;
+  (void)line;
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
