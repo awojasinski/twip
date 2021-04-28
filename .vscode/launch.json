@@ -12,7 +12,7 @@
             "servertype": "openocd",
             "executable": "${workspaceFolder}/build/bin/twip.elf",
             "device": "STM32G431KB",
-            "svdFile": "${workspaceFolder}/STM32G431KBxx.svd",
+            "svdFile": "${workspaceFolder}/STM32G431xx.svd",
             "configFiles": [
                 "interface/stlink.cfg",
                 "target/stm32g4x.cfg"
