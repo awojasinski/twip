@@ -6,5 +6,6 @@
     "cmake.configureSettings": {
 
     },
-    "C_Cpp.default.intelliSenseMode": "gcc-arm"
+    "C_Cpp.default.intelliSenseMode": "gcc-arm",
+    "git.enableCommitSigning": true
 }
