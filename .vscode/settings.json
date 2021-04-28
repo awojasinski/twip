@@ -1,0 +1,11 @@
+{
+    "cmake.generator": "Unix Makefiles",
+    "cmake.configureEnvironment": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "on"
+    },
+    "cmake.configureSettings": {
+
+    },
+    "C_Cpp.default.intelliSenseMode": "gcc-arm",
+    "git.enableCommitSigning": true
+}
