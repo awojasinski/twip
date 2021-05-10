@@ -3,7 +3,7 @@
         {
             "name": "Win",
             "includePath": [
-                "${workspaceFolder}/**"
+                "${workspaceFolder}/**/**"
             ],
             "defines": [],
             "macFrameworkPath": [],
