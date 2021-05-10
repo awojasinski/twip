@@ -46,6 +46,7 @@ target_sources(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         hal
+        cli
 )
 
 target_link_options(${PROJECT_NAME}

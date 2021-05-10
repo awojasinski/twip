@@ -22,3 +22,6 @@ include(cmake/utils.cmake)
 
 add_subdirectory(hal)
 add_subdirectory(app)
+add_subdirectory(libs/cli)
+add_subdirectory(libs/uart)
+add_subdirectory(libs/fifo)
