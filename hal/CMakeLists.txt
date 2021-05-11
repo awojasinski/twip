@@ -16,6 +16,9 @@ target_include_directories(hal
         ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Device/ST/STM32G4xx/Include
         ${CMAKE_CURRENT_SOURCE_DIR}/Drivers/CMSIS/Include
         ${CMAKE_CURRENT_SOURCE_DIR}/Core/Inc
+        ${CMAKE_CURRENT_SOURCE_DIR}/FATFS/App
+        ${CMAKE_CURRENT_SOURCE_DIR}/FATFS/Target
+        ${CMAKE_CURRENT_SOURCE_DIR}/Middlewares/Third_Party/FatFs/src
 )
 
 target_compile_definitions(hal
