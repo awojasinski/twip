@@ -1,0 +1,53 @@
+file(GLOB_RECURSE MPU9250_HEADERS CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/inc/*.h
+)
+
+file(GLOB_RECURSE MPU9250_SOURCES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
+)
+
+add_library(mpu9250 STATIC)
+
+set_target_properties(mpu9250
+    PROPERTIES
+        C_STANDARD 11
+        C_EXTENSIONS ON
+        CMAKE_C_STANDARD_REQUIRED ON
+)
+
+target_compile_options(mpu9250
+    PRIVATE
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Werror
+        -Wstrict-prototypes
+        -Wmissing-prototypes
+        -Wduplicated-cond
+        -Wduplicated-branches
+        -Wlogical-op
+        -Wnull-dereference
+        -Wshadow
+        -Wconversion
+        -Wsign-conversion
+)
+
+target_include_directories(mpu9250
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/inc
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(mpu9250
+    PRIVATE
+        hal
+)
+
+target_sources(mpu9250
+    PUBLIC
+        ${MPU9250_HEADERS}
+    PRIVATE
+        ${MPU9250_SOURCES}
+)
