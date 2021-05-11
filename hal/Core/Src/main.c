@@ -96,7 +96,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLR = RCC_PLLR_DIV2;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);;
+    Error_Handler(__FILE__, __LINE__);
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
@@ -109,7 +109,7 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_4) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);;
+    Error_Handler(__FILE__, __LINE__);
   }
   /** Initializes the peripherals clocks
   */
@@ -122,7 +122,7 @@ void SystemClock_Config(void)
 
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);;
+    Error_Handler(__FILE__, __LINE__);
   }
 }
 

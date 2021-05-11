@@ -53,7 +53,7 @@ void MX_RTC_Init(void)
   hrtc.Init.OutPutPullUp = RTC_OUTPUT_PULLUP_NONE;
   if (HAL_RTC_Init(&hrtc) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);;
+    Error_Handler(__FILE__, __LINE__);
   }
 
   /* USER CODE BEGIN Check_RTC_BKUP */
@@ -70,7 +70,7 @@ void MX_RTC_Init(void)
   sTime.StoreOperation = RTC_STOREOPERATION_RESET;
   if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);;
+    Error_Handler(__FILE__, __LINE__);
   }
   sDate.WeekDay = RTC_WEEKDAY_MONDAY;
   sDate.Month = RTC_MONTH_JANUARY;
@@ -79,7 +79,7 @@ void MX_RTC_Init(void)
 
   if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);;
+    Error_Handler(__FILE__, __LINE__);
   }
   /* USER CODE BEGIN RTC_Init 2 */
 

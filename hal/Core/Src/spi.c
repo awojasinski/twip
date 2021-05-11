@@ -53,7 +53,7 @@ void MX_SPI1_Init(void)
   hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);;
+    Error_Handler(__FILE__, __LINE__);
   }
   /* USER CODE BEGIN SPI1_Init 2 */
 
@@ -77,6 +77,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     __HAL_RCC_GPIOB_CLK_ENABLE();
     /**SPI1 GPIO Configuration
     PA5     ------> SPI1_SCK
+    PB4     ------> SPI1_MISO
     PB5     ------> SPI1_MOSI
     */
     GPIO_InitStruct.Pin = SD_card_SCK_Pin;
@@ -86,12 +87,12 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
     HAL_GPIO_Init(SD_card_SCK_GPIO_Port, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = SD_card_MOSI_Pin;
+    GPIO_InitStruct.Pin = SD_card_MISO_Pin|SD_card_MOSI_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
-    HAL_GPIO_Init(SD_card_MOSI_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN SPI1_MspInit 1 */
 
@@ -112,11 +113,12 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef* spiHandle)
 
     /**SPI1 GPIO Configuration
     PA5     ------> SPI1_SCK
+    PB4     ------> SPI1_MISO
     PB5     ------> SPI1_MOSI
     */
     HAL_GPIO_DeInit(SD_card_SCK_GPIO_Port, SD_card_SCK_Pin);
 
-    HAL_GPIO_DeInit(SD_card_MOSI_GPIO_Port, SD_card_MOSI_Pin);
+    HAL_GPIO_DeInit(GPIOB, SD_card_MISO_Pin|SD_card_MOSI_Pin);
 
   /* USER CODE BEGIN SPI1_MspDeInit 1 */
 
