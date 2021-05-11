@@ -1,5 +1,6 @@
 #include "main.h"
 #include "i2c.h"
+#include "dma.h"
 #include "rtc.h"
 #include "spi.h"
 #include "tim.h"

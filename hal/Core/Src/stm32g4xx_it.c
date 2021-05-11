@@ -57,8 +57,9 @@
 
 /* External variables --------------------------------------------------------*/
 extern I2C_HandleTypeDef hi2c1;
+extern DMA_HandleTypeDef hdma_tim1_ch1;
+extern DMA_HandleTypeDef hdma_tim1_ch4;
 extern UART_HandleTypeDef huart1;
-extern UART_HandleTypeDef huart2;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -230,6 +231,34 @@ void EXTI1_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles DMA1 channel1 global interrupt.
+  */
+void DMA1_Channel1_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel1_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel1_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_tim1_ch1);
+  /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 channel2 global interrupt.
+  */
+void DMA1_Channel2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_tim1_ch4);
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 1 */
+}
+
+/**
   * @brief This function handles EXTI line[9:5] interrupts.
   */
 void EXTI9_5_IRQHandler(void)
@@ -271,11 +300,6 @@ void USART1_IRQHandler(void)
 
   /* USER CODE END USART1_IRQn 1 */
 }
-
-/**
-  * @brief This function handles USART2 global interrupt / USART2 wake-up interrupt through EXTI line 26.
-  */
-
 
 /* USER CODE BEGIN 1 */
 
