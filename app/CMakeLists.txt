@@ -47,6 +47,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         hal
         cli
+        mpu9250
 )
 
 target_link_options(${PROJECT_NAME}

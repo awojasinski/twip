@@ -43,6 +43,7 @@ target_include_directories(mpu9250
 target_link_libraries(mpu9250
     PRIVATE
         hal
+        cli
 )
 
 target_sources(mpu9250
