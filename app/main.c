@@ -20,6 +20,7 @@ void main(void) {
   MX_TIM1_Init();
   MX_USART1_UART_Init(); //ESP32
   MX_SPI1_Init();
+  MX_FATFS_Init();
 
   cli_init();
 
