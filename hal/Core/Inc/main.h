@@ -51,14 +51,15 @@ extern "C" {
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-void Error_Handler(char*, int);
-void SystemClock_Config(void);
+void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SD_card_CS_Pin GPIO_PIN_0
+#define SD_card_CS_GPIO_Port GPIOF
 #define Motor_R_hall_1_Pin GPIO_PIN_0
 #define Motor_R_hall_1_GPIO_Port GPIOA
 #define Motor_R_hall_1_EXTI_IRQn EXTI0_IRQn
@@ -110,8 +111,8 @@ void SystemClock_Config(void);
 #define LD2_Pin GPIO_PIN_8
 #define LD2_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-#define SD_CS_GPIO_Port LD2_GPIO_Port
-#define SD_CS_Pin LD2_Pin
+#define SD_CS_GPIO_Port SD_card_CS_GPIO_Port
+#define SD_CS_Pin SD_card_CS_Pin
 
 #define SD_SPI_HANDLE hspi1
 /* USER CODE END Private defines */
