@@ -1,30 +1,31 @@
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
-  * @file    stm32g4xx_it.h
-  * @brief   This file contains the headers of the interrupt handlers.
+  * @file   app_fatfs.h
+  * @brief  Header for fatfs applications
   ******************************************************************************
   * @attention
   *
   * <h2><center>&copy; Copyright (c) 2021 STMicroelectronics.
   * All rights reserved.</center></h2>
   *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
+  * This software component is licensed by ST under Ultimate Liberty license
+  * SLA0044, the "License"; You may not use this file except in compliance with
+  * the License. You may obtain a copy of the License at:
+  *                             www.st.com/SLA0044
   *
- ******************************************************************************
+  ******************************************************************************
   */
 /* USER CODE END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __STM32G4xx_IT_H
-#define __STM32G4xx_IT_H
+#ifndef __APP_FATFS_H
+#define __APP_FATFS_H
 
-#ifdef __cplusplus
- extern "C" {
-#endif
+/* Includes ------------------------------------------------------------------*/
+#include "ff.h"
+#include "ff_gen_drv.h"
+#include "user_diskio.h" /* defines USER_Driver as external */
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -47,28 +48,23 @@
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
-void NMI_Handler(void);
-void HardFault_Handler(void);
-void MemManage_Handler(void);
-void BusFault_Handler(void);
-void UsageFault_Handler(void);
-void SVC_Handler(void);
-void DebugMon_Handler(void);
-void PendSV_Handler(void);
-void SysTick_Handler(void);
-void EXTI0_IRQHandler(void);
-void EXTI1_IRQHandler(void);
-void EXTI9_5_IRQHandler(void);
-void I2C1_EV_IRQHandler(void);
-void USART1_IRQHandler(void);
+int32_t MX_FATFS_Init(void);
+int32_t MX_FATFS_Process(void);
 /* USER CODE BEGIN EFP */
 
 /* USER CODE END EFP */
 
-#ifdef __cplusplus
-}
-#endif
+/* Private defines -----------------------------------------------------------*/
+/* USER CODE BEGIN Private defines */
+#define APP_OK                      0
+#define APP_ERROR                  -1
+#define APP_SD_UNPLUGGED           -2
+/* USER CODE END Private defines */
 
-#endif /* __STM32G4xx_IT_H */
+extern FATFS USERFatFs;    /* File system object for USER logical drive */
+extern FIL USERFile;       /* File  object for USER */
+extern char USERPath[4];   /* USER logical drive path */
+
+#endif /*__APP_FATFS_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

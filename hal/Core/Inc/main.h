@@ -59,6 +59,8 @@ void SystemClock_Config(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define SD_card_CS_Pin GPIO_PIN_0
+#define SD_card_CS_GPIO_Port GPIOF
 #define Motor_R_hall_1_Pin GPIO_PIN_0
 #define Motor_R_hall_1_GPIO_Port GPIOA
 #define Motor_R_hall_1_EXTI_IRQn EXTI0_IRQn
@@ -69,6 +71,8 @@ void SystemClock_Config(void);
 #define ST_LINK_RX_GPIO_Port GPIOA
 #define ST_LINK_TX_Pin GPIO_PIN_3
 #define ST_LINK_TX_GPIO_Port GPIOA
+#define Sensor_data_INT_Pin GPIO_PIN_4
+#define Sensor_data_INT_GPIO_Port GPIOA
 #define SD_card_SCK_Pin GPIO_PIN_5
 #define SD_card_SCK_GPIO_Port GPIOA
 #define Motor_L_hall_1_Pin GPIO_PIN_6
@@ -97,16 +101,21 @@ void SystemClock_Config(void);
 #define Sensor_SCL_GPIO_Port GPIOA
 #define T_SWO_Pin GPIO_PIN_3
 #define T_SWO_GPIO_Port GPIOB
-#define SD_card_detection_Pin GPIO_PIN_4
-#define SD_card_detection_GPIO_Port GPIOB
+#define SD_card_MISO_Pin GPIO_PIN_4
+#define SD_card_MISO_GPIO_Port GPIOB
 #define SD_card_MOSI_Pin GPIO_PIN_5
 #define SD_card_MOSI_GPIO_Port GPIOB
+#define SD_card_detection_Pin GPIO_PIN_6
+#define SD_card_detection_GPIO_Port GPIOB
 #define Sensor_SDA_Pin GPIO_PIN_7
 #define Sensor_SDA_GPIO_Port GPIOB
 #define LD2_Pin GPIO_PIN_8
 #define LD2_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
+#define SD_CS_GPIO_Port SD_card_CS_GPIO_Port
+#define SD_CS_Pin SD_card_CS_Pin
 
+#define SD_SPI_HANDLE hspi1
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
