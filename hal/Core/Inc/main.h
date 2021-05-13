@@ -110,7 +110,10 @@ void SystemClock_Config(void);
 #define LD2_Pin GPIO_PIN_8
 #define LD2_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
+#define SD_CS_GPIO_Port LD2_GPIO_Port
+#define SD_CS_Pin LD2_Pin
 
+#define SD_SPI_HANDLE hspi1
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
