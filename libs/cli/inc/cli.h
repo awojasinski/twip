@@ -49,6 +49,7 @@ typedef enum {
 void cli_main(void);
 void cli_init(void);
 void cli_info(void);
+char cli_get_char(void);
 void cli_clear_console(void);
 void cli_color_console(cli_text_color_t);
 void cli_clear_line(uint8_t);

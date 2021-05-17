@@ -7,6 +7,8 @@
 
 #include "cli.h"
 #include "cli_callbacks.h"
+#include "uart.h"
+#include "mpu9250.h"
 
 static cmd_error_t cli_pwm_callback(char*);
 static cmd_error_t cli_led_callback(char*);
@@ -14,6 +16,7 @@ static cmd_error_t cli_pause_callback(char*);
 static cmd_error_t cli_continue_callback(char*);
 static cmd_error_t cli_help_callback(char*);
 static cmd_error_t cli_cls_callback(char*);
+static cmd_error_t cli_imu_callback(char*);
 
 static bool twip_paused = false;
 
@@ -24,6 +27,7 @@ const cmd_t cmd_list[CALLBACKS_CNT] = {
   {CLI_CALLBACK_CONTINUE, "continue", &cli_continue_callback},
   {CLI_CALLBACK_HELP, "help", &cli_help_callback},
   {CLI_CALLBACK_CLEAR, "cls", &cli_cls_callback},
+  {CLI_CALLBACK_IMU, "imu", &cli_imu_callback},
 };
 
 static cmd_error_t cli_pwm_callback(char *cmd) {
@@ -97,6 +101,28 @@ static cmd_error_t cli_help_callback(char *cmd) {
 static cmd_error_t cli_cls_callback(char *cmd) {
   UNUSED(cmd);
   cli_clear_console();
+  cli_info();
+  return CMD_OK;
+}
+
+static cmd_error_t cli_imu_callback(char *cmd) {
+  UNUSED(cmd);
+  uart_show_recived_input(false);
+  cli_clear_line(1);
+  char c;
+  do {
+    mpu9250_data_scaled((mpu9250_data_t *)&hmpu9250_data);
+    cli_printf("ACCEL:\tX:%6.3f Y:%6.3f Z:%6.3f", hmpu9250_data.accel.x, hmpu9250_data.accel.y, hmpu9250_data.accel.z);
+    cli_printf("GYRO:\tX:%6.3f Y:%6.3f Z:%6.3f", hmpu9250_data.gyro.x, hmpu9250_data.gyro.y, hmpu9250_data.gyro.z);
+    cli_printf("TEMP: %4.2f", hmpu9250_data.temp);
+
+    cli_delay(200);
+    cli_clear_line(3);
+    c = cli_get_char();
+  } while (c != 'q' && c != 'Q' && c != 27);
+  cli_clear_buffer();
+  uart_show_recived_input(true);
+
   return CMD_OK;
 }
 

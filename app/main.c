@@ -28,13 +28,6 @@ void main(void) {
 
   while (1) {
     HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-
-    mpu9250_data_scaled((mpu9250_data_t *)&hmpu9250_data);
-    cli_printf("ACCEL:\tX:%6.3f Y:%6.3f Z:%6.3f", hmpu9250_data.accel.x, hmpu9250_data.accel.y, hmpu9250_data.accel.z);
-    cli_printf("GYRO:\tX:%6.3f Y:%6.3f Z:%6.3f", hmpu9250_data.gyro.x, hmpu9250_data.gyro.y, hmpu9250_data.gyro.z);
-    cli_printf("TEMP: %4.2f", hmpu9250_data.temp);
-
     cli_delay(200);
-    cli_clear_line(3);
   }
 }
