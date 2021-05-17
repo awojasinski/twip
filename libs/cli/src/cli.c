@@ -29,6 +29,68 @@ void cli_main() {
     }
 }
 
+void cli_info() {
+  cli_clear_console();
+  cli_color_console(TEXT_CYAN_LIGHT);
+  cli_printf("++++++++++++++++++++++++++++++++");
+  cli_printf("TWIP Firmware");
+  cli_printf("Author: Adam Wojasinski");
+  cli_printf("Compiled %s %s", __DATE__, __TIME__);
+  cli_printf("++++++++++++++++++++++++++++++++");
+  cli_color_console(TEXT_DEFAULT);
+}
+
+void cli_clear_console() {
+  cli_printf_inline("%c[2J", 27);
+  cli_printf_inline("%c[H", 27);
+}
+
+void cli_color_console(cli_text_color_t color) {
+  switch (color) {
+    case TEXT_DEFAULT :
+      cli_printf_inline("%s", ASCII_COLOR_DEFAULT);
+      break;
+    case TEXT_RED:
+      cli_printf_inline("%s", ASCII_COLOR_RED);
+      break;
+    case TEXT_RED_LIGHT:
+      cli_printf_inline("%s", ASCII_COLOR_RED_LIGHT);
+      break;
+    case TEXT_BLUE:
+      cli_printf_inline("%s", ASCII_COLOR_BLUE);
+      break;
+    case TEXT_BLUE_LIGHT:
+      cli_printf_inline("%s", ASCII_COLOR_BLUE_LIGHT);
+      break;
+    case TEXT_GREEN:
+      cli_printf_inline("%s", ASCII_COLOR_GREEN);
+      break;
+    case TEXT_GREEN_LIGHT:
+      cli_printf_inline("%s", ASCII_COLOR_GREEN_LIGHT);
+      break;
+    case TEXT_YELLOW:
+      cli_printf_inline("%s", ASCII_COLOR_YELLOW);
+      break;
+    case TEXT_YELLOW_LIGHT:
+      cli_printf_inline("%s", ASCII_COLOR_YELLOW_LIGHT);
+      break;
+    case TEXT_MAGENTA:
+      cli_printf_inline("%s", ASCII_COLOR_MAGENTA);
+      break;
+    case TEXT_MAGENTA_LIGHT:
+      cli_printf_inline("%s", ASCII_COLOR_MAGENTA_LIGHT);
+      break;
+    case TEXT_CYAN:
+      cli_printf_inline("%s", ASCII_COLOR_CYAN);
+      break;
+    case TEXT_CYAN_LIGHT:
+      cli_printf_inline("%s", ASCII_COLOR_CYAN_LIGHT);
+      break;
+    default:
+      break;
+  }
+}
+
 void cli_cmd_analyze(char *buffer) {
   cmd_error_t ret = CMD_UNSUPPORTED;
   uint8_t i = (uint8_t)strcspn(buffer, EOF_BYTE_SET);
@@ -49,13 +111,13 @@ void cli_cmd_analyze(char *buffer) {
   }
   switch (ret) {
   case CMD_TOO_LONG:
-    cli_printf("Too long command");
+    cli_printf("%sToo long command%s", ASCII_COLOR_RED_LIGHT, ASCII_COLOR_DEFAULT);
     break;
   case CMD_UNSUPPORTED:
-    cli_printf("Unsupported command");
+    cli_printf("%sUnsupported command%s", ASCII_COLOR_RED_LIGHT, ASCII_COLOR_DEFAULT);
     break;
   case CMD_WRONG_PARAM:
-    cli_printf("Wrong command or parameter");
+    cli_printf("%sWrong command or parameter%s", ASCII_COLOR_RED_LIGHT, ASCII_COLOR_DEFAULT);
     break;
   default:
     break;
@@ -73,6 +135,11 @@ void cli_printf(const char *str, ...) {
   uart_send_str(&uart_dbg, cli_tx_buffer);
   uart_send_str(&uart_dbg, "\r\n");
   va_end(valist);
+}
+
+void cli_clear_line(uint8_t n) {
+  cli_printf_inline("%c[%dA", 27, n);
+  cli_printf_inline("%c[0J", 27);
 }
 
 void cli_printf_inline(const char *str, ...)
