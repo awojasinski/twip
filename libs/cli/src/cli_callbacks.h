@@ -10,6 +10,7 @@ enum cmd_enum_t
   CLI_CALLBACK_PAUSE,
   CLI_CALLBACK_CONTINUE,
   CLI_CALLBACK_HELP,
+  CLI_CALLBACK_CLEAR,
   //Put more callbacks above comment
 
   CALLBACKS_CNT,

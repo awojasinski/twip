@@ -13,6 +13,7 @@ static cmd_error_t cli_led_callback(char*);
 static cmd_error_t cli_pause_callback(char*);
 static cmd_error_t cli_continue_callback(char*);
 static cmd_error_t cli_help_callback(char*);
+static cmd_error_t cli_cls_callback(char*);
 
 static bool twip_paused = false;
 
@@ -22,6 +23,7 @@ const cmd_t cmd_list[CALLBACKS_CNT] = {
   {CLI_CALLBACK_PAUSE, "pause", &cli_pause_callback},
   {CLI_CALLBACK_CONTINUE, "continue", &cli_continue_callback},
   {CLI_CALLBACK_HELP, "help", &cli_help_callback},
+  {CLI_CALLBACK_CLEAR, "cls", &cli_cls_callback},
 };
 
 static cmd_error_t cli_pwm_callback(char *cmd) {
@@ -73,18 +75,28 @@ static cmd_error_t cli_led_callback(char *cmd) {
             return CMD_OK;
         }
         return CMD_WRONG_PARAM;
+    } else if (stpcpy(cmd_chunk, "on") == 0) {
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
+      return CMD_OK;
+    } else if (stpcpy(cmd_chunk, "off") == 0) {
+      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
     }
-    return CMD_WRONG_PARAM;
+      return CMD_WRONG_PARAM;
 }
 
 static cmd_error_t cli_help_callback(char *cmd) {
   UNUSED(cmd);
-  cli_printf("TWIP Firmware");
-  cli_printf("Compiled %s %s\n", __DATE__, __TIME__);
+  cli_info();
   cli_printf("Available commands");
   for (uint8_t i=0; i<CLI_CMD_CALLBACKS_CNT; i++) {
     cli_printf("twip %s", cmd_list[i].command);
   }
+  return CMD_OK;
+}
+
+static cmd_error_t cli_cls_callback(char *cmd) {
+  UNUSED(cmd);
+  cli_clear_console();
   return CMD_OK;
 }
 
