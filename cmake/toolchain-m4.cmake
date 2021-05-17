@@ -14,13 +14,13 @@ set(CMAKE_SIZE_UTIL    arm-none-eabi-size)
 
 
 set(COMMON_FLAGS "-mthumb -mcpu=${TARGET_CPU}")
-set(C_CXX_FLAGS  "--specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -mfloat-abi=soft")
+set(C_CXX_FLAGS  "--specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -mfloat-abi=hard -mfpu=fpv4-sp-d16 -u _printf_float")
 set(CXX_FLAGS    "-fno-exceptions -fno-rtti -fno-threadsafe-statics")
 
-set(CMAKE_C_FLAGS_INIT          "${COMMON_FLAGS} ${C_CXX_FLAGS}"              CACHE STRING "" FORCE)
-set(CMAKE_CXX_FLAGS_INIT        "${COMMON_FLAGS} ${C_CXX_FLAGS} ${CXX_FLAGS}" CACHE STRING "" FORCE)
-set(CMAKE_ASM_FLAGS_INIT        "${COMMON_FLAGS} -x assembler-with-cpp"       CACHE STRING "" FORCE)
-set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--gc-sections"                           CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_INIT          "${COMMON_FLAGS} ${C_CXX_FLAGS}"                        CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_INIT        "${COMMON_FLAGS} ${C_CXX_FLAGS} ${CXX_FLAGS}"           CACHE STRING "" FORCE)
+set(CMAKE_ASM_FLAGS_INIT        "${COMMON_FLAGS} -x assembler-with-cpp"                 CACHE STRING "" FORCE)
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-Wl,--gc-sections -mfpu=fpv4-sp-d16 -u _printf_float"  CACHE STRING "" FORCE)
 
 set(CMAKE_C_FLAGS_DEBUG     "-Og -g3 -gdwarf-2"          CACHE STRING "" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG   "-Og -g3 -gdwarf-2"          CACHE STRING "" FORCE)
