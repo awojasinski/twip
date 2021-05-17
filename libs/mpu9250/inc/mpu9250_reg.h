@@ -148,6 +148,8 @@
 // Power management
 #define MPU9250_PWR_MGMT_1 0x6b
 #define MPU9250_PWR_MGMT_2 0x6c
+#define MPU9250_PWR_RESET_BIT 7
+#define MPU9250_PWR_SLEEP_BIT 6
 
 // Digital Motion Processing registers.
 #define MPU9250_DMP_BANK 0x6d
