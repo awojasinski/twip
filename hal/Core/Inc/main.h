@@ -73,6 +73,7 @@ void SystemClock_Config(void);
 #define ST_LINK_TX_GPIO_Port GPIOA
 #define Sensor_data_INT_Pin GPIO_PIN_4
 #define Sensor_data_INT_GPIO_Port GPIOA
+#define Sensor_data_INT_EXTI_IRQn EXTI4_IRQn
 #define SD_card_SCK_Pin GPIO_PIN_5
 #define SD_card_SCK_GPIO_Port GPIOA
 #define Motor_L_hall_1_Pin GPIO_PIN_6
