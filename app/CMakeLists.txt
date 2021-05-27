@@ -48,6 +48,8 @@ target_link_libraries(${PROJECT_NAME}
         hal
         cli
         mpu9250
+        encoder
+        logger
 )
 
 target_link_options(${PROJECT_NAME}
