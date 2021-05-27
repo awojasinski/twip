@@ -40,7 +40,7 @@ void MX_CORDIC_Init(void)
   hcordic.Instance = CORDIC;
   if (HAL_CORDIC_Init(&hcordic) != HAL_OK)
   {
-    Error_Handler();
+    Error_Handler(__FILE__, __LINE__);
   }
   /* USER CODE BEGIN CORDIC_Init 2 */
 
