@@ -34,17 +34,37 @@ static cmd_error_t cli_pwm_callback(char *cmd) {
   strtok(cmd, EOF_BYTE_SET);
   char *param = strtok(NULL, EOF_BYTE_SET);
 
-  uint8_t pwm_filling = (uint8_t)atoi(param);
-  if (pwm_filling <= 100) {
+  int8_t pwm_filling = (int8_t)atoi(param);
+  if (pwm_filling <= 100 && pwm_filling >= -100) {
     TIM_OC_InitTypeDef sConfigOC = {0};
 
     sConfigOC.OCMode = TIM_OCMODE_PWM1;
-    sConfigOC.Pulse = (uint32_t)pwm_filling*htim1.Init.Period/100;
+    sConfigOC.Pulse = (uint32_t)abs(pwm_filling)*htim1.Init.Period/100;
     sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
     sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
     sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
     sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
     sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+
+    if (pwm_filling > 0) {
+      HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(Motor_L_direction2_GPIO_Port, Motor_L_direction2_Pin, GPIO_PIN_RESET);
+
+      HAL_GPIO_WritePin(Motor_R_direction1_GPIO_Port, Motor_R_direction1_Pin, GPIO_PIN_SET);
+      HAL_GPIO_WritePin(Motor_R_direction2_GPIO_Port, Motor_R_direction2_Pin, GPIO_PIN_RESET);
+    } else if (pwm_filling < 0){
+      HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(Motor_L_direction2_GPIO_Port, Motor_L_direction2_Pin, GPIO_PIN_SET);
+
+      HAL_GPIO_WritePin(Motor_R_direction1_GPIO_Port, Motor_R_direction1_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(Motor_R_direction2_GPIO_Port, Motor_R_direction2_Pin, GPIO_PIN_SET);
+    } else {
+      HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(Motor_L_direction2_GPIO_Port, Motor_L_direction2_Pin, GPIO_PIN_RESET);
+
+      HAL_GPIO_WritePin(Motor_R_direction1_GPIO_Port, Motor_R_direction1_Pin, GPIO_PIN_RESET);
+      HAL_GPIO_WritePin(Motor_R_direction2_GPIO_Port, Motor_R_direction2_Pin, GPIO_PIN_RESET);
+    }
 
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
     HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
@@ -106,24 +126,42 @@ static cmd_error_t cli_cls_callback(char *cmd) {
 }
 
 static cmd_error_t cli_imu_callback(char *cmd) {
-  UNUSED(cmd);
-  uart_show_recived_input(false);
-  cli_clear_line(1);
-  char c;
-  do {
-    mpu9250_data_scaled((mpu9250_data_t *)&hmpu9250_data);
-    cli_printf("ACCEL:\tX:%6.3f Y:%6.3f Z:%6.3f", hmpu9250_data.accel.x, hmpu9250_data.accel.y, hmpu9250_data.accel.z);
-    cli_printf("GYRO:\tX:%6.3f Y:%6.3f Z:%6.3f", hmpu9250_data.gyro.x, hmpu9250_data.gyro.y, hmpu9250_data.gyro.z);
-    cli_printf("TEMP: %4.2f", hmpu9250_data.temp);
+  strtok(cmd, EOF_BYTE_SET);
+  char *cmd_chunk = strtok(NULL, EOF_BYTE_SET);
+  
+  if (strcmp(cmd_chunk, "show") == 0) {
+    uart_show_recived_input(false);
+    cli_clear_line(1);
+    char c;
+    do {
+      mpu9250_data_scaled((mpu9250_data_t *)&hmpu9250_data);
+      cli_printf("ACCEL:\tX:%6.3f Y:%6.3f Z:%6.3f", hmpu9250_data.accel.x, hmpu9250_data.accel.y, hmpu9250_data.accel.z);
+      cli_printf("GYRO:\tX:%6.3f Y:%6.3f Z:%6.3f", hmpu9250_data.gyro.x, hmpu9250_data.gyro.y, hmpu9250_data.gyro.z);
+      cli_printf("TEMP: %4.2f", hmpu9250_data.temp);
 
-    cli_delay(200);
-    cli_clear_line(3);
-    c = cli_get_char();
-  } while (c != 'q' && c != 'Q' && c != 27);
-  cli_clear_buffer();
-  uart_show_recived_input(true);
+      cli_delay(200);
+      cli_clear_line(3);
+      c = cli_get_char();
+    } while (c != 'q' && c != 'Q' && c != 27);
+    cli_clear_buffer();
+    uart_show_recived_input(true);
 
-  return CMD_OK;
+    return CMD_OK;
+  } else if (strcmp(cmd_chunk, "log") == 0) {
+    char *filename;
+        cmd_chunk = strtok(NULL, EOF_BYTE_SET);
+    if (strcmp(cmd_chunk, "-n") == 0) {
+      filename = strtok(NULL, EOF_BYTE_SET);
+      cli_printf("Logging data to %s file", filename);
+    } else {
+      filename = "imu9250_log";
+      cli_printf("Logging data to %s file", filename);
+    }
+    
+    return CMD_OK;
+  }
+
+  return CMD_WRONG_PARAM;
 }
 
 static cmd_error_t cli_pause_callback(char *cmd) {
