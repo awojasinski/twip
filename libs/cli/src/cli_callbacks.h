@@ -12,9 +12,10 @@ enum cmd_enum_t
   CLI_CALLBACK_HELP,
   CLI_CALLBACK_CLEAR,
   CLI_CALLBACK_IMU,
-      //Put more callbacks above comment
+  CLI_CALLBACK_PID_MOTOR,
+  //Put more callbacks above comment
 
-      CALLBACKS_CNT,
+  CALLBACKS_CNT,
 };
 
 #define CLI_CMD_CALLBACKS_CNT CALLBACKS_CNT

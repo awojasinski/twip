@@ -46,6 +46,7 @@ target_link_libraries(cli
         uart
         fifo
         mpu9250
+        encoder
 )
 
 target_sources(cli

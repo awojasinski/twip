@@ -9,6 +9,7 @@
 #include "cli_callbacks.h"
 #include "uart.h"
 #include "mpu9250.h"
+#include "encoder.h"
 
 static cmd_error_t cli_pwm_callback(char*);
 static cmd_error_t cli_led_callback(char*);
@@ -17,6 +18,7 @@ static cmd_error_t cli_continue_callback(char*);
 static cmd_error_t cli_help_callback(char*);
 static cmd_error_t cli_cls_callback(char*);
 static cmd_error_t cli_imu_callback(char*);
+static cmd_error_t cli_pid_motor_callback(char*);
 
 static bool twip_paused = false;
 
@@ -28,6 +30,7 @@ const cmd_t cmd_list[CALLBACKS_CNT] = {
   {CLI_CALLBACK_HELP, "help", &cli_help_callback},
   {CLI_CALLBACK_CLEAR, "cls", &cli_cls_callback},
   {CLI_CALLBACK_IMU, "imu", &cli_imu_callback},
+  {CLI_CALLBACK_PID_MOTOR, "pid", &cli_pid_motor_callback},
 };
 
 static cmd_error_t cli_pwm_callback(char *cmd) {
@@ -36,15 +39,6 @@ static cmd_error_t cli_pwm_callback(char *cmd) {
 
   int8_t pwm_filling = (int8_t)atoi(param);
   if (pwm_filling <= 100 && pwm_filling >= -100) {
-    TIM_OC_InitTypeDef sConfigOC = {0};
-
-    sConfigOC.OCMode = TIM_OCMODE_PWM1;
-    sConfigOC.Pulse = (uint32_t)abs(pwm_filling)*htim1.Init.Period/100;
-    sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-    sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-    sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-    sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-    sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
 
     if (pwm_filling > 0) {
       HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_SET);
@@ -66,12 +60,8 @@ static cmd_error_t cli_pwm_callback(char *cmd) {
       HAL_GPIO_WritePin(Motor_R_direction2_GPIO_Port, Motor_R_direction2_Pin, GPIO_PIN_RESET);
     }
 
-    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Stop(&htim1, TIM_CHANNEL_4);
-    HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1);
-    HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_4);
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
-    HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, (uint32_t)abs(pwm_filling*10));
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, (uint32_t)abs(pwm_filling*10));
 
     return CMD_OK;
   } else {
@@ -123,6 +113,99 @@ static cmd_error_t cli_cls_callback(char *cmd) {
   cli_clear_console();
   cli_info();
   return CMD_OK;
+}
+
+static cmd_error_t cli_pid_motor_callback(char *cmd) {
+  static int error_threshold_deg = 1;
+
+  static float P = 200.0F;
+  static float I = 0.0F;
+  static float D = 0;
+  static uint32_t sample_time = 10;
+
+  strtok(cmd, EOF_BYTE_SET);
+  char *cmd_chunk = strtok(NULL, EOF_BYTE_SET);
+
+  if (strcmp(cmd_chunk, "config") == 0) {
+    cli_printf("Previous PID parameters:");
+    cli_printf("P: %f I: %f D: %f", P, I, D);
+    P = atoff(strtok(NULL, EOF_BYTE_SET));
+    I = atoff(strtok(NULL, EOF_BYTE_SET));
+    D = atoff(strtok(NULL, EOF_BYTE_SET));
+
+    cli_printf("New PID parameters:");
+    cli_printf("P: %f I: %f D: %f", P, I, D);
+    return CMD_OK;
+  } else if (strcmp(cmd_chunk, "set") == 0) {
+    uart_show_recived_input(false);
+
+    float set_value = atoff(strtok(NULL, EOF_BYTE_SET));
+    
+    float control, err, err_div;
+    float err_int = 0;
+    float err_prev = 0;
+
+    uint32_t timestamp;
+
+    char c;
+    do {
+      err = set_value - encoder_get_angle_deg((encoder_t*)&encoder_left);
+
+      timestamp = HAL_GetTick();
+
+      if (err < error_threshold_deg && err > - error_threshold_deg) {
+        err = 0;
+      }
+      err_int += err * (float)sample_time / 1000;
+      err_div = (err - err_prev) / ((float)sample_time / 1000);
+      err_prev = err;
+
+      control = P * err + I * err_int + D * err_div;
+
+      if (control < -1062) {
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 1062);
+
+        HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(Motor_L_direction2_GPIO_Port, Motor_L_direction2_Pin, GPIO_PIN_RESET);
+      }
+      else if (control > 1062)
+      {
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 1062);
+
+        HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(Motor_L_direction2_GPIO_Port, Motor_L_direction2_Pin, GPIO_PIN_SET);
+      }
+      else
+      {
+        __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, (uint32_t)abs((int)control));
+        if (control > 0) {
+          HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_RESET);
+          HAL_GPIO_WritePin(Motor_L_direction2_GPIO_Port, Motor_L_direction2_Pin, GPIO_PIN_SET);
+        } else if (control < 0) {
+          HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_SET);
+          HAL_GPIO_WritePin(Motor_L_direction2_GPIO_Port, Motor_L_direction2_Pin, GPIO_PIN_RESET);
+        } else {
+          HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_RESET);
+          HAL_GPIO_WritePin(Motor_L_direction2_GPIO_Port, Motor_L_direction2_Pin, GPIO_PIN_RESET);
+        }
+      }
+      cli_printf("%f %f %f", err, control, encoder_get_angle_deg((encoder_t*)&encoder_left));
+      
+      while ((HAL_GetTick() - timestamp) < sample_time) {
+      }
+      //cli_delay(sample_time);
+      //cli_clear_line(1);
+      c = cli_get_char();
+    } while (c != 'q' && c != 'Q' && c != 27);
+
+    __HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_1, 0);
+    HAL_GPIO_WritePin(Motor_L_direction1_GPIO_Port, Motor_L_direction1_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(Motor_L_direction2_GPIO_Port, Motor_L_direction2_Pin, GPIO_PIN_RESET);
+    cli_clear_buffer();
+    uart_show_recived_input(true);
+    return CMD_OK;
+  }
+  return CMD_WRONG_PARAM;
 }
 
 static cmd_error_t cli_imu_callback(char *cmd) {
