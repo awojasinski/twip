@@ -3,7 +3,8 @@
 
 #include "stm32g4xx_hal.h"
 
-#define IMPUSLES_PER_TURN 2069
+//#define IMPUSLES_PER_TURN 2069
+#define IMPUSLES_PER_TURN 1979
 
 typedef struct {
     TIM_HandleTypeDef *tim;
@@ -13,11 +14,11 @@ typedef struct {
     uint8_t wheel_r;
     float ang_velo;
     float ang_accel;
-    float velo;
+    uint32_t velo;
     float accel;
 } encoder_t;
 
-extern volatile encoder_t encoder_right, encoder_left;
+extern encoder_t encoder_right, encoder_left;
 
 void encoder_init(TIM_HandleTypeDef*, TIM_HandleTypeDef*, uint8_t);
 void encoder_irq_handler(uint16_t);

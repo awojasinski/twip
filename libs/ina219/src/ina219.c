@@ -1,91 +1,36 @@
+#include "main.h"
+
 #include "ina219_reg.h"
 #include "ina219.h"
 
 #define DATA_TRANSFER_TIMEOUT 100
 
-// Values for voltage range
-typedef enum ina219_busvol_config_t {
-    INA219_BUSVOLTAGE_RANGE_16V = 0x0000,    // 0-16V Range
-    INA219_BUSVOLTAGE_RANGE_32V = 0x2000,    // 0-32V Range
-} ina219_busvol_config_t;
-
-// Values for gain bits
-typedef enum ina219_pga_config_t {
-    INA219_PGA_BITS_1 = 0x0000,     // gain 1, 40mV Range
-    INA219_PGA_BITS_2 = 0x0800,     // gain 2, 80mV Range
-    INA219_PGA_BITS_4 = 0x1000,     // gain 4, 160mV Range
-    INA219_PGA_BITS_8 = 0x1800,     // gain 8, 320mV Range
-} ina219_pga_config_t;
-
-// Values for ADC resolution and samples
-typedef enum ina219_adc_config_t
-{
-    INA219_ADC_SAMPLE_9_BIT_1S_84US = 0x0000,    // 1x9-bit shunt sample
-    INA219_ADC_SAMPLE_10BIT_1S_148US = 0x0008,   // 1x10-bit shunt sample
-    INA219_ADC_SAMPLE_11BIT_1S_276US = 0x0010,   // 1x11-bit shunt sample
-    INA219_ADC_SAMPLE_12BIT_1S_532US = 0x0018,   // 1x12-bit shunt sample
-    INA219_ADC_SAMPLE_12BIT_2S_1060US = 0x0048,  // 2x12-bit shunt sample averaged together
-    INA219_ADC_SAMPLE_12BIT_4S_2130US = 0x0050,  // 4x12-bit shunt sample averaged together
-    INA219_ADC_SAMPLE_12BIT_8S_4260US = 0x0058,  // 8x12-bit shunt sample averaged together
-    INA219_ADC_SAMPLE_12BIT_16S_8510US = 0x0060, // 16x12-bit shunt sample averaged together
-    INA219_ADC_SAMPLE_12BIT_32S_17MS = 0x0060,   // 32x12-bit shunt sample averaged together
-    INA219_ADC_SAMPLE_12BIT_64S_34MS = 0x0060,   // 64x12-bit shunt sample averaged together
-    INA219_ADC_SAMPLE_12BIT_128S_69MS = 0x0060,  // 128x12-bit shunt sample averaged together
-
-} ina219_adc_config_t;
-
-// Values for operating mode
-typedef enum ina219_mode_config_t {
-    INA219_PowerDown,
-    INA219_SVolTrig,
-    INA219_BVolTrig,
-    INA219_SAndBVolTrig,
-    INA219_AdcOff,
-    INA219_SVolCon,
-    INA219_BVolCon,
-    INA219_SAndBVolCon
-} ina219_mode_config_t;
-
 typedef struct {
+    bool initialized;
     I2C_HandleTypeDef *hi2c;
     uint8_t addr;
-    bool initialized;
-
-    uint32_t calibrationVal;
-
+    uint16_t calibrationVal;
     uint32_t currentDivider_mA;
     float powerMultiplier_mW;
 } ina219_sensor_t;
 
-static inline HAL_StatusTypeDef sensor_i2c_write_bytes(uint16_t, uint8_t *, uint16_t);
-static inline HAL_StatusTypeDef sensor_i2c_read_bytes(uint16_t, uint8_t *, uint16_t);
+static ina219_sensor_t hina219 = {false, NULL, 0, 0, 0, 0.0F};
 
-#define sensor_i2c_write_byte(addr, ptr) sensor_i2c_write_bytes(addr, ptr, 1)
-#define sensor_i2c_read_byte(addr, ptr) sensor_i2c_read_bytes(addr, ptr, 1)
+static inline void i2c_write_reg(uint16_t, uint16_t);
+static inline int16_t i2c_read_reg(uint16_t);
 
 static void ina219_reset(void);
 static void ina219_setMode(ina219_mode_config_t);
-static void ina219_setBADC(ina219_adc_config_t);
-static void ina219_setSADC(ina219_adc_config_t);
+static void ina219_setBADC(ina219_adc_res_config_t, ina219_adc_samples_config_t);
+static void ina219_setSADC(ina219_adc_res_config_t, ina219_adc_samples_config_t);
 static void ina219_setPGA(ina219_pga_config_t);
 static void ina219_setBRNG(ina219_busvol_config_t);
-
-static void ina219_setConfiguration(ina219_busvol_config_t, ina219_pga_config_t, ina219_adc_config_t, ina219_adc_config_t, ina219_mode_config_t);
-
-static void ina219_setCalibration(void);
-
-static inline int16_t ina219_BusVoltage_raw(void);
-static inline int16_t ina219_ShuntVoltage_raw(void);
-static inline int16_t ina219_Current_raw(void);
-static inline int16_t ina219_Power_raw(void);
-
-static ina219_sensor_t hina219 = {NULL, 0, false, 0, 0, 0.0F};
 
 void ina219_init(I2C_HandleTypeDef *i2c) {
     hina219.hi2c = i2c;
     hina219.addr = INA219_I2C_ADDRESS4 << 1;
 
-    if (HAL_I2C_IsDeviceReady(hina219.hi2c, hina219.addr, 3, 5) == HAL_OK) {
+    if (HAL_I2C_IsDeviceReady(hina219.hi2c, hina219.addr, 3, 100) == HAL_OK) {
         // VBUS_MAX = 16V    (12V operating voltage)
         // VSHUNT_MAX = 0.16 (possible 0.32 0.16 0.08 0.04)
         // RSHUNT = 0.1
@@ -139,15 +84,89 @@ void ina219_init(I2C_HandleTypeDef *i2c) {
         // MaximumPower = Max_Current_Before_Overflow * VBUS_MAX
 
         // Set multipliers to convert raw current/power values
-        hina219.currentDivider_mA = 10; // Current LSB = 100uA per bit (1000/100 = 10)
-        hina219.powerMultiplier_mW = 2; // Power LSB = 1mW per bit (2/1)
+        //hina219.currentDivider_mA = 10; // Current LSB = 100uA per bit (1000/100 = 10)
+        //hina219.powerMultiplier_mW = 2; // Power LSB = 1mW per bit (2/1)
 
-        ina219_setConfiguration(INA219_BUSVOLTAGE_RANGE_16V, INA219_PGA_BITS_4, INA219_ADC_SAMPLE_12BIT_1S_532US, INA219_ADC_SAMPLE_12BIT_1S_532US, INA219_SAndBVolCon);
-        sensor_i2c_write_bytes(INA219_REG_CALIBRATION, (uint8_t *)&hina219.calibrationVal, 4);
+        ina219_setBRNG(INA219_BUSVOLTAGE_RANGE_32V);
+        ina219_setPGA(INA219_PGA_BITS_8);
+        ina219_setBADC(INA219_ADC_12BIT, INA219_ADC_SAMPLE_8_4260US);
+        ina219_setSADC(INA219_ADC_12BIT, INA219_ADC_SAMPLE_8_4260US);
+        ina219_setMode(INA219_SAndBVolCon);
+
+        i2c_write_reg(INA219_REG_CALIBRATION, hina219.calibrationVal);
         hina219.initialized = true;
     } else {
         hina219.initialized = false;
     }
+}
+
+float ina219_BusVoltage_V() {
+    return (float)((i2c_read_reg(INA219_REG_BUSVOLTAGE) >> 1) * 0.001F);
+}
+
+float ina219_ShuntVoltage_mV() {
+    return (float)(i2c_read_reg(INA219_REG_SHUNTVOLTAGE) * 0.01);
+}
+
+float ina219_Current_mA() {
+    return (float)(i2c_read_reg(INA219_REG_CURRENT));
+}
+
+float ina219_Power_mW() {
+    return (float)(i2c_read_reg(INA219_REG_POWER) * 20);
+}
+
+static void ina219_setMode(ina219_mode_config_t mode) {
+    int16_t config = i2c_read_reg(INA219_REG_CONFIG);
+    config &= ~((int16_t)0x07);
+    config = (int16_t)(config | mode);
+    i2c_write_reg(INA219_REG_CONFIG, (uint16_t)config);
+}
+
+static void ina219_setBADC(ina219_adc_res_config_t resolution, ina219_adc_samples_config_t samples) {
+    int16_t config = i2c_read_reg(INA219_REG_CONFIG);
+    int16_t value;
+    if (resolution < INA219_ADC_12BIT && samples > INA219_ADC_SAMPLE_1_532U) {
+        return;
+    }
+    if (resolution < INA219_ADC_12BIT) {
+        value = resolution;
+    } else {
+        value = 0x08 | samples;
+    }
+    config &= ~((int16_t)0x0f << 7);
+    config = (int16_t)(config | value << 7);
+    i2c_write_reg(INA219_REG_CONFIG, (uint16_t)config);
+}
+
+static void ina219_setSADC(ina219_adc_res_config_t resolution, ina219_adc_samples_config_t samples) {
+    int16_t config = i2c_read_reg(INA219_REG_CONFIG);
+    int16_t value;
+    if (resolution < INA219_ADC_12BIT && samples > INA219_ADC_SAMPLE_1_532U) {
+        return;
+    }
+    if (resolution < INA219_ADC_12BIT) {
+        value = resolution;
+    } else {
+        value = 0x08 | samples;
+    }
+    config &= ~((int16_t)0x0f << 3);
+    config = (int16_t)(config | value << 3);
+    i2c_write_reg(INA219_REG_CONFIG, (uint16_t)config);
+}
+
+static void ina219_setPGA(ina219_pga_config_t pga_resolution) {
+    int16_t config = i2c_read_reg(INA219_REG_CONFIG);
+    config &= ~((int16_t)0x03 << 11);
+    config = (int16_t)(config | pga_resolution << 11);
+    i2c_write_reg(INA219_REG_CONFIG, (uint16_t)config);
+}
+
+static void ina219_setBRNG(ina219_busvol_config_t voltage_range) {
+    int16_t config = i2c_read_reg(INA219_REG_CONFIG);
+    config &= ~((uint16_t)1 << 13);
+    config = (int16_t)(config | voltage_range << 13);
+    i2c_write_reg(INA219_REG_CONFIG, (uint16_t)config);
 }
 
 bool ina219_is_initialized() {
@@ -155,113 +174,16 @@ bool ina219_is_initialized() {
 }
 
 static void ina219_reset() {
-    uint16_t data = INA219_CONFIG_RESET;
-    sensor_i2c_write_bytes(INA219_REG_CONFIG, (uint8_t*)&data, 2);
+    i2c_write_reg(INA219_REG_CONFIG, INA219_CONFIG_RESET);
 }
 
-float ina219_ShuntVoltage_mV() {
-    int16_t value = ina219_ShuntVoltage_raw();
-    return (float) value * 0.01F;
+static inline void i2c_write_reg(uint16_t MemAddres, uint16_t data) {
+    uint8_t buf[2] = {(uint8_t)(data >> 8), (uint8_t)(data & 0xFF)};
+    HAL_I2C_Mem_Write(hina219.hi2c, hina219.addr, MemAddres, 1, buf, 2, DATA_TRANSFER_TIMEOUT);
 }
 
-float ina219_ShuntVoltage_V() {
-    int16_t value = ina219_ShuntVoltage_raw();
-    return (float)value * 0.00001F;
-}
-
-float ina219_BusVoltage_mV() {
-    int16_t value = ina219_BusVoltage_raw();
-    return (float)(value >> 2);
-}
-
-float ina219_BusVoltage_V() {
-    int16_t value = ina219_BusVoltage_raw();
-    return (float)(value >> 2) * 0.001F;
-}
-
-float ina219_Current_mA() {
-    return (float)ina219_Current_raw();
-}
-
-float ina219_Power_mW() {
-    return (float)ina219_Power_raw() * 20;
-}
-
-static void ina219_setMode(ina219_mode_config_t mode) {
-    uint16_t config;
-    sensor_i2c_read_bytes(INA219_REG_CONFIG, (uint8_t *)&config, 2);
-    config &= (uint16_t) ~(INA219_MASK_MODE);
-    config = (uint16_t) (config | mode);
-    sensor_i2c_write_bytes(INA219_REG_CONFIG, (uint8_t *)&config, 2);
-}
-
-static void ina219_setBADC(ina219_adc_config_t adc_resolution) {
-    uint16_t config;
-    sensor_i2c_read_bytes(INA219_REG_CONFIG, (uint8_t *)&config, 2);
-    config &= (uint16_t) ~(INA219_MASK_PGA);
-    config = (uint16_t) (config | adc_resolution);
-    sensor_i2c_write_bytes(INA219_REG_CONFIG, (uint8_t *)&config, 2);
-}
-
-static void ina219_setSADC(ina219_adc_config_t adc_resolution) {
-    uint16_t config;
-    sensor_i2c_read_bytes(INA219_REG_CONFIG, (uint8_t *)&config, 2);
-    config &= (uint16_t) ~(INA219_MASK_BADC);
-    config = (uint16_t) (config | adc_resolution);
-    sensor_i2c_write_bytes(INA219_REG_CONFIG, (uint8_t *)&config, 2);
-}
-
-static void ina219_setPGA(ina219_pga_config_t pga_resolution) {
-    uint16_t config;
-    sensor_i2c_read_bytes(INA219_REG_CONFIG, (uint8_t*)&config, 2);
-    config &= (uint16_t) ~(INA219_MASK_PGA);
-    config = (uint16_t) (config | pga_resolution);
-    sensor_i2c_write_bytes(INA219_REG_CONFIG, (uint8_t*)&config, 2);
-}
-
-static void ina219_setBRNG(ina219_busvol_config_t voltage_range) {
-    uint16_t config;
-    sensor_i2c_read_bytes(INA219_REG_CONFIG, (uint8_t*)&config, 2);
-    config &= (uint16_t) ~(INA219_MASK_PGA);
-    config = (uint16_t) (config | voltage_range);
-    sensor_i2c_write_bytes(INA219_REG_CONFIG, (uint8_t*)&config, 2);
-}
-
-static void ina219_setConfiguration(ina219_busvol_config_t busVoltageRange, ina219_pga_config_t pgaGain, ina219_adc_config_t busADCrange, ina219_adc_config_t shuntADCrange, ina219_mode_config_t sensorMode) {
-    uint16_t config = (uint16_t) (busVoltageRange | pgaGain | busADCrange | shuntADCrange | sensorMode);
-    sensor_i2c_write_bytes(INA219_REG_CONFIG, (uint8_t*)&config, 2);
-}
-
-static inline int16_t ina219_BusVoltage_raw() {
-    int16_t data;
-    sensor_i2c_read_bytes(INA219_REG_BUSVOLTAGE, (uint8_t*)&data, 2);
-    return data;
-}
-
-static inline int16_t ina219_ShuntVoltage_raw() {
-    int16_t data;
-    sensor_i2c_read_bytes(INA219_REG_SHUNTVOLTAGE, (uint8_t*)&data, 2);
-    return data;
-}
-
-static inline int16_t ina219_Current_raw() {
-    int16_t data;
-    sensor_i2c_read_bytes(INA219_REG_CURRENT, (uint8_t*)&data, 2);
-    return data;
-}
-
-static inline int16_t ina219_Power_raw() {
-    int16_t data;
-    sensor_i2c_read_bytes(INA219_REG_POWER, (uint8_t*)&data, 2);
-    return data;
-}
-
-static inline HAL_StatusTypeDef sensor_i2c_write_bytes(uint16_t MemAddres, uint8_t *pData, uint16_t size)
-{
-    return HAL_I2C_Mem_Write(hina219.hi2c, hina219.addr, MemAddres, 1, pData, size, DATA_TRANSFER_TIMEOUT);
-}
-
-static inline HAL_StatusTypeDef sensor_i2c_read_bytes(uint16_t MemAddres, uint8_t *pData, uint16_t size)
-{
-    return HAL_I2C_Mem_Read(hina219.hi2c, hina219.addr, MemAddres, 1, pData, size, DATA_TRANSFER_TIMEOUT);
+static inline int16_t i2c_read_reg(uint16_t MemAddres) {
+    uint8_t buf[2];
+    HAL_I2C_Mem_Read(hina219.hi2c, hina219.addr, MemAddres, 1, buf, 2, DATA_TRANSFER_TIMEOUT);
+    return (int16_t)(buf[0]<<8 | buf[1]);
 }
