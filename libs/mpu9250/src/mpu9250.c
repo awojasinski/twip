@@ -62,7 +62,6 @@ void mpu9250_init() {
     hmpu9250.hi2c = &hi2c1;
     hmpu9250.addr = MPU9250_I2C_ADDRESS<<1;
 
-    MX_I2C1_Init();
     mpu9250_reset();
     mpu9250_sleep(false);
 

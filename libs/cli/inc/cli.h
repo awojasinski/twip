@@ -1,6 +1,8 @@
 #ifndef CLI_H
 #define CLI_H
 
+#include "stdbool.h"
+
 #define CLI_BUFFER_SIZE 256
 #define EOF_BYTE_SET " \r\n"
 
@@ -60,5 +62,6 @@ void cli_printf_inline(const char*, ...);
 void cli_delay(uint32_t);
 void cli_clear_buffer(void);
 void USART2_IRQHandler(void);
+void cli_mute(bool);
 
 #endif

@@ -14,10 +14,12 @@
 #include "mpu9250.h"
 #include "logger.h"
 #include "encoder.h"
+#include "ina219.h"
 
 volatile uint32_t pulses;
 
 static inline void fatfs_test(void);
+//static void scan_i2c(I2C_HandleTypeDef*, uint16_t, uint16_t);
 
 void main(void) {
 
@@ -33,30 +35,58 @@ void main(void) {
   //MX_USART1_UART_Init(); //ESP32
   //MX_SPI1_Init();
   //MX_FATFS_Init();
+  MX_I2C1_Init();
+  cli_init();
+  cli_info();
+
+  HAL_Delay(100);
+
+  //scan_i2c(&hi2c1, 0, 0x100);
+
   encoder_init(&htim3, &htim2, 90);
+  //ina219_init(&hi2c1);
+
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 
   HAL_TIM_Base_Start_IT(&htim4);
   HAL_TIM_Base_Start_IT(&htim3);
-
-  cli_init();
-  cli_info();
 
   //fatfs_test();
   //mpu9250_init();
   //fatfs_test();
   //HAL_SPI_MspDeInit(&hspi1);
   //logger_init();
+  cli_mute(false);
 
   while (1) {
     HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
     pulses = htim3.Instance->CNT;
-    cli_printf("L pulses: %4u angle: %6.2f", pulses, encoder_get_angle_deg((encoder_t*)&encoder_left));
-    //pulses = htim2.Instance->CNT;
-    //cli_printf("R pulses: %lu position: %lu", pulses, pulses >> 2);
-    cli_delay(200);
+    //cli_printf("Pulses: %4u Angle: %6.2f Velo: %6.2f", pulses, encoder_get_angle_deg((encoder_t*)&encoder_left), encoder_left.ang_velo);
+    cli_printf("PWM:%d RPM:%lu", __HAL_TIM_GET_COMPARE(&htim1, TIM_CHANNEL_1)/10, encoder_left.velo); //encoder_get_angle_deg(&encoder_left));
+    //cli_printf("%")
+    cli_delay(10);
     cli_clear_line(1);
   }
 }
+
+/*
+static void scan_i2c(I2C_HandleTypeDef *i2c, uint16_t start_addr, uint16_t stop_addr) {
+  cli_printf("Scan I2C addresses");
+  for (uint16_t addr = start_addr; addr <= stop_addr; addr++) {
+    if( HAL_I2C_IsDeviceReady(i2c, addr << 1, 5, 200) == HAL_OK) {
+      cli_printf_inline("%s0x%04X%s, ", ASCII_COLOR_GREEN_LIGHT, addr, ASCII_COLOR_DEFAULT);
+    } else {
+      cli_printf_inline("%s0x%04X%s, ", ASCII_COLOR_RED_LIGHT, addr, ASCII_COLOR_DEFAULT);
+    }
+    if ((addr-start_addr+1)%10 == 0) {
+      cli_printf_inline("\n\r");
+    }
+  }
+  cli_printf_inline("\n\r");
+  HAL_Delay(10);
+}
+*/
 
 static inline void fatfs_test(){
   FATFS FS;

@@ -50,6 +50,7 @@ target_link_libraries(${PROJECT_NAME}
         mpu9250
         encoder
         logger
+        ina219
 )
 
 target_link_options(${PROJECT_NAME}

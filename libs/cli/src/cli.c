@@ -19,6 +19,10 @@ static volatile bool cmd_analyze = false;
 
 uart_handler_t uart_dbg;
 
+void cli_mute(bool status){
+  uart_show_recived_input(!status);
+}
+
 void cli_main() {
     if (cmd_analyze) {
         cmd_analyze = false;
