@@ -28,7 +28,8 @@ void uart_init(uart_handler_t*, UART_HandleTypeDef*, uart_name);
 void uart_IRQ(uart_handler_t*);
 void uart_deinit(uart_handler_t*);
 void uart_reinit(uart_handler_t*);
-void uart_send_str_blocking(uart_handler_t*, const char*);
+void uart_show_recived_input(bool);
+void uart_send_str_blocking(uart_handler_t *, const char *);
 void uart_send(uart_handler_t *, const char *, uint8_t);
 
 #endif

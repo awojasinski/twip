@@ -1,22 +1,22 @@
-file(GLOB_RECURSE CLI_HEADERS CONFIGURE_DEPENDS
+file(GLOB_RECURSE INA219_HEADERS CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/inc/*.h
 )
 
-file(GLOB_RECURSE CLI_SOURCES CONFIGURE_DEPENDS
+file(GLOB_RECURSE INA219_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
 )
 
-add_library(cli STATIC)
+add_library(ina219 OBJECT)
 
-set_target_properties(cli
+set_target_properties(ina219
     PROPERTIES
         C_STANDARD 11
         C_EXTENSIONS ON
         CMAKE_C_STANDARD_REQUIRED ON
 )
 
-target_compile_options(cli
+target_compile_options(ina219
     PRIVATE
         -Wall
         -Wextra
@@ -31,27 +31,24 @@ target_compile_options(cli
         -Wshadow
         -Wconversion
         -Wsign-conversion
+        -Wno-unused-function
 )
 
-target_include_directories(cli
+target_include_directories(ina219
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/inc
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(cli
+target_link_libraries(ina219
     PRIVATE
         hal
-        uart
-        fifo
-        mpu9250
-        encoder
 )
 
-target_sources(cli
+target_sources(ina219
     PUBLIC
-        ${CLI_HEADERS}
+        ${INA219_HEADERS}
     PRIVATE
-        ${CLI_SOURCES}
+        ${INA219_SOURCES}
 )

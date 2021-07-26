@@ -19,6 +19,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cordic.h"
 #include "app_fatfs.h"
 #include "i2c.h"
 #include "rtc.h"

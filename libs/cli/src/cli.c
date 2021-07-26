@@ -189,6 +189,10 @@ void cli_delay(uint32_t delay_ms) {
   }
 }
 
+char cli_get_char(void) {
+  return rx_buffer_top <= 0 ? '\0' : cli_rx_buffer[rx_buffer_top-1];
+}
+
 void USART2_IRQHandler(void) {
   if (uart_dbg.huart->Instance == USART2) {
     uart_IRQ(&uart_dbg);
@@ -234,5 +238,6 @@ void cli_init()
   HAL_NVIC_EnableIRQ(USART2_IRQn);
 
   uart_init(&uart_dbg, &huart2, UART_DBG);
+  uart_show_recived_input(true);
   cli_status = CLI_ENABLED;
 }

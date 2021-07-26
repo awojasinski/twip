@@ -11,6 +11,8 @@ enum cmd_enum_t
   CLI_CALLBACK_CONTINUE,
   CLI_CALLBACK_HELP,
   CLI_CALLBACK_CLEAR,
+  CLI_CALLBACK_IMU,
+  CLI_CALLBACK_PID_MOTOR,
   //Put more callbacks above comment
 
   CALLBACKS_CNT,

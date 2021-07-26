@@ -5,6 +5,7 @@
 #include "uart.h"
 
 static uint16_t uart_check_tx_size(uart_handler_t*);
+static bool uart_print_recived_input = true;
 
 void uart_init(uart_handler_t *u, UART_HandleTypeDef *huart, uart_name name) {
   u->huart = huart;
@@ -86,7 +87,9 @@ void uart_IRQ(uart_handler_t *u) {
     char rx_data = 0;
     rx_data = (char)(u->huart->Instance->RDR);
     cli_rx_byte_handler(rx_data);
-    uart_send_cnt(u, (char*)&rx_data, 1);
+    if (uart_print_recived_input) {
+      uart_send_cnt(u, (char *)&rx_data, 1);
+    }
   }
 
   // UART TX FIFO
@@ -115,4 +118,8 @@ void uart_IRQ(uart_handler_t *u) {
     __HAL_UART_SEND_REQ(u->huart, USART_RQR_RXFRQ);
     __HAL_UART_CLEAR_FLAG(u->huart, USART_ICR_ORECF);
   }
+}
+
+void uart_show_recived_input(bool enable) {
+  uart_print_recived_input = enable;
 }
