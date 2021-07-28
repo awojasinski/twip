@@ -30,6 +30,7 @@ build/
 *.a
 *.la
 *.lo
+!libs/invensense9250/mpl/*.a
 
 # Shared objects (inc. Windows DLLs)
 *.dll
