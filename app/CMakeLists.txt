@@ -27,6 +27,7 @@ target_compile_options(${PROJECT_NAME}
         -Werror
         -Wduplicated-cond
         -Wduplicated-branches
+        -Wno-unused-variable
         -Wlogical-op
         -Wnull-dereference
         -Wconversion
@@ -47,10 +48,9 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         hal
         cli
-        mpu9250
+        invensense
         encoder
         logger
-        ina219
 )
 
 target_link_options(${PROJECT_NAME}
