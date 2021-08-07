@@ -103,11 +103,9 @@ void MX_GPIO_Init(void)
   __HAL_SYSCFG_FASTMODEPLUS_ENABLE(SYSCFG_FASTMODEPLUS_PB8);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI4_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
-  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+  //HAL_NVIC_SetPriority(EXTI9_5_IRQn, 1, 0);
+  //HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 }
 
