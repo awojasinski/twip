@@ -2,6 +2,7 @@
 #define LOGGER_H
 
 #include <stdbool.h>
+#include <string.h>
 
 #include "app_fatfs.h"
 
@@ -15,6 +16,7 @@ void logger_deinit(void);
 FRESULT log_data(char*, UINT);
 void logger_sd_card_detection_irq(void);
 
+void fatfs_test(void);
 void EXTI9_5_IRQHandler(void);
 
 #endif
