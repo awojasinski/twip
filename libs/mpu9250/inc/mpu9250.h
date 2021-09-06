@@ -43,7 +43,7 @@ extern mpu9250_sensor_t hmpu9250;
 extern mpu9250_raw_data_t volatile hmpu9250_raw_data;
 extern mpu9250_data_t volatile hmpu9250_data;
 
-void mpu9250_init(void);
+//void mpu9250_init(void);
 bool mpu9250_is_initialized(void);
 void mpu9250_data_scaled(mpu9250_data_t*);
 void mpu9250_data_raw(mpu9250_raw_data_t*);

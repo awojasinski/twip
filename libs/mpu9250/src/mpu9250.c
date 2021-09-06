@@ -57,8 +57,8 @@ mpu9250_raw_data_t volatile hmpu9250_raw_data;
 mpu9250_data_t volatile hmpu9250_data;
 
 float gyro_scale, accel_scale;
-
-void mpu9250_init() {
+static inline void mpu9250_init(void);
+static inline void mpu9250_init() {
     hmpu9250.hi2c = &hi2c1;
     hmpu9250.addr = MPU9250_I2C_ADDRESS<<1;
 
@@ -227,7 +227,11 @@ static inline void mpu9250_dlpf(mpu9250_dlpf_config_t filter) {
 
 static inline uint8_t mpu9250_get_sensor_address() {
     uint8_t tmp;
-    sensor_i2c_read_byte(MPU9250_FIFO_WHO_AM_I, &tmp);
+    HAL_StatusTypeDef ret = sensor_i2c_read_byte(MPU9250_FIFO_WHO_AM_I, &tmp);
+    if (ret == HAL_ERROR)
+    {
+        for(;;){}
+    }
     return tmp;
 }
 
@@ -249,9 +253,3 @@ static inline HAL_StatusTypeDef sensor_i2c_read_bytes(uint16_t MemAddres, uint8_
     return HAL_I2C_Mem_Read(hmpu9250.hi2c, hmpu9250.addr, MemAddres, 1, pData, size, DATA_TRANSFER_TIMEOUT);
 }
 
-void EXTI4_IRQHandler(void)
-{
-    uint8_t interrupt = mpu9250_get_int_status();
-    UNUSED(interrupt);
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
-}

@@ -7,6 +7,9 @@ encoder_t encoder_right, encoder_left;
 static inline void overflow_underflow_handler(encoder_t*);
 
 void encoder_init(TIM_HandleTypeDef *left_tim, TIM_HandleTypeDef *right_tim, uint8_t wheel_diameter_mm) {
+    MX_TIM2_Init(); // encoder right motor
+    MX_TIM3_Init(); // encoder left motor
+
     encoder_left.tim = left_tim;
     encoder_right.tim = right_tim;
 
@@ -18,25 +21,8 @@ void encoder_init(TIM_HandleTypeDef *left_tim, TIM_HandleTypeDef *right_tim, uin
 
     HAL_TIM_Encoder_Start(encoder_left.tim, TIM_CHANNEL_ALL);
     HAL_TIM_Encoder_Start(encoder_right.tim, TIM_CHANNEL_ALL);
-}
 
-void encoder_irq_handler(uint16_t delta_ms) {
-    encoder_left.encoder_cnt_new = (uint16_t)__HAL_TIM_GetCounter(encoder_left.tim);
-    encoder_right.encoder_cnt_new = (uint16_t)__HAL_TIM_GetCounter(encoder_right.tim);
-
-    int16_t encoder_delta_l, encoder_delta_r;
-    encoder_delta_l = (int16_t)(encoder_left.encoder_cnt_new - encoder_left.encoder_cnt_old);
-    encoder_delta_r = (int16_t)(encoder_right.encoder_cnt_new - encoder_right.encoder_cnt_old);
-    encoder_left.encoder_cnt_old = encoder_left.encoder_cnt_new;
-    encoder_right.encoder_cnt_old = encoder_right.encoder_cnt_new;
-
-    float velocity_l, velocity_r;
-    velocity_l = (float)((encoder_delta_l*60000)/IMPUSLES_PER_TURN)/delta_ms;
-    velocity_r = (float)((encoder_delta_r*60000)/IMPUSLES_PER_TURN)/delta_ms;
-
-
-    encoder_left.ang_velo = velocity_l;
-    encoder_right.ang_velo = velocity_r;
+    HAL_TIM_Base_Start_IT(encoder_left.tim);
 }
 
 float encoder_get_angle_deg(encoder_t *hencoder) {
@@ -52,19 +38,6 @@ float encoder_get_angle_deg(encoder_t *hencoder) {
     #endif
     degree = (float)(hencoder->full_turn) * 360.0F + ((float)counts * 360.0F) / IMPUSLES_PER_TURN;
     return degree;
-}
-
-void TIM3_IRQHandler(void) {
-    HAL_TIM_IRQHandler(&htim3);
-}
-
-void TIM2_IRQHandler(void) {
-    HAL_TIM_IRQHandler(&htim2);
-}
-
-void TIM4_IRQHandler(void) {
-    encoder_irq_handler(1);
-    HAL_TIM_IRQHandler(&htim4);
 }
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
@@ -95,3 +68,12 @@ static inline void overflow_underflow_handler(encoder_t *hencoder) {
     }
 }
 
+void TIM3_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&htim3);
+}
+
+void TIM2_IRQHandler(void)
+{
+    HAL_TIM_IRQHandler(&htim2);
+}

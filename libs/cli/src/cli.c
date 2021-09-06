@@ -244,4 +244,7 @@ void cli_init()
   uart_init(&uart_dbg, &huart2, UART_DBG);
   uart_show_recived_input(true);
   cli_status = CLI_ENABLED;
+
+  cli_mute(false);
+  cli_info();
 }

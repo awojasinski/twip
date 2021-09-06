@@ -47,6 +47,7 @@ target_link_libraries(cli
         fifo
         mpu9250
         encoder
+        control
 )
 
 target_sources(cli
