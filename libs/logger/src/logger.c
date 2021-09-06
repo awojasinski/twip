@@ -3,6 +3,8 @@
 #include "cli.h"
 #include "logger.h"
 
+#define __LOG_BUFFER_SIZE 100
+
 FATFS FileSystem;
 FIL logger_file;
 volatile FRESULT logger_result;
@@ -10,15 +12,18 @@ volatile FRESULT logger_result;
 volatile bool sd_card_inserted = false;
 volatile bool log_file_created = false;
 
-void logger_init() {
-    if (!sd_card_inserted) {
+void logger_init()
+{
+    if (!sd_card_inserted)
+    {
         if (HAL_GPIO_ReadPin(SD_card_detection_GPIO_Port, SD_card_detection_Pin) == GPIO_PIN_SET)
         {
             if (f_mount((FATFS *)&FileSystem, "", 1) == FR_OK)
             {
                 sd_card_inserted = true;
                 cli_printf("SD card detected!");
-                if (f_open(&logger_file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS | FA_CREATE_ALWAYS) == FR_OK) {
+                if (f_open(&logger_file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS | FA_CREATE_ALWAYS | FA_OPEN_APPEND) == FR_OK)
+                {
                     log_file_created = true;
                 }
             }
@@ -26,10 +31,13 @@ void logger_init() {
     }
 }
 
-void logger_deinit() {
-    if (sd_card_inserted) {
+void logger_deinit()
+{
+    if (sd_card_inserted)
+    {
         sd_card_inserted = false;
-        if (f_close(&logger_file) == FR_OK) {
+        if (f_close(&logger_file) == FR_OK)
+        {
             log_file_created = false;
         };
         cli_printf("SD card removed!");
@@ -37,8 +45,38 @@ void logger_deinit() {
     }
 }
 
-FRESULT log_data(char *str, UINT len){
-    if (log_file_created) {
+void save_log(log_t const *p_log_data)
+{
+    if (p_log_data != NULL)
+    {
+        for (size_t i = 0; i < LOG_BUFFER; i++)
+        {
+            f_printf(&logger_file,
+                     "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
+                     p_log_data[i].acc[0],
+                     p_log_data[i].acc[1],
+                     p_log_data[i].acc[2],
+                     p_log_data[i].gyro[0],
+                     p_log_data[i].gyro[1],
+                     p_log_data[i].gyro[2],
+                     p_log_data[i].gyro_raw[0],
+                     p_log_data[i].gyro_raw[1],
+                     p_log_data[i].gyro_raw[2],
+                     p_log_data[i].euler[0],
+                     p_log_data[i].euler[1],
+                     p_log_data[i].euler[2],
+                     p_log_data[i].control_l,
+                     p_log_data[i].control_r,
+                     p_log_data[i].angle_l,
+                     p_log_data[i].angle_r);
+        }
+    }
+}
+
+FRESULT log_data(char *str, UINT len)
+{
+    if (log_file_created)
+    {
         UINT bytesWrote;
         return f_write(&logger_file, str, len, &bytesWrote);
     }
@@ -137,9 +175,12 @@ void fatfs_test()
     f_mount(NULL, "", 1);
 }
 
-void EXTI9_5_IRQHandler() {
-    if (__HAL_GPIO_EXTI_GET_FLAG(SD_card_detection_Pin)) {
-        if (HAL_GPIO_ReadPin(SD_card_detection_GPIO_Port, SD_card_detection_Pin) == GPIO_PIN_RESET) {
+void EXTI9_5_IRQHandler()
+{
+    if (__HAL_GPIO_EXTI_GET_FLAG(SD_card_detection_Pin))
+    {
+        if (HAL_GPIO_ReadPin(SD_card_detection_GPIO_Port, SD_card_detection_Pin) == GPIO_PIN_RESET)
+        {
             logger_deinit();
         }
     }

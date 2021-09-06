@@ -51,6 +51,7 @@ target_link_libraries(${PROJECT_NAME}
         invensense
         encoder
         logger
+        control
 )
 
 target_link_options(${PROJECT_NAME}

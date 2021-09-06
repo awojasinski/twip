@@ -31,6 +31,7 @@
 //Make sure you set #define SD_CS_GPIO_Port as some GPIO port in main.h
 //Make sure you set #define SD_CS_Pin as some GPIO pin in main.h
 extern SPI_HandleTypeDef SD_SPI_HANDLE;
+extern DMA_HandleTypeDef DMA_SPI;
 
 /* Function prototypes */
 
@@ -39,8 +40,8 @@ extern SPI_HandleTypeDef SD_SPI_HANDLE;
     {                                                                                                  \
         MODIFY_REG(SD_SPI_HANDLE.Instance->CR1, SPI_BAUDRATEPRESCALER_256, SPI_BAUDRATEPRESCALER_256); \
     } /* Set SCLK = slow, approx 280 KBits/s*/
-#define FCLK_FAST()                                                                                  \
-    {                                                                                                \
+#define FCLK_FAST()                                                                                   \
+    {                                                                                                 \
         MODIFY_REG(SD_SPI_HANDLE.Instance->CR1, SPI_BAUDRATEPRESCALER_256, SPI_BAUDRATEPRESCALER_64); \
     } /* Set SCLK = fast, approx 4.5 MBits/s */
 
@@ -114,7 +115,12 @@ static BYTE xchg_spi(
 )
 {
     BYTE rxDat;
-    HAL_SPI_TransmitReceive(&SD_SPI_HANDLE, &dat, &rxDat, 1, 50);
+    HAL_SPI_TransmitReceive_DMA(&SD_SPI_HANDLE, &dat, &rxDat, 1);
+    while (HAL_DMA_PollForTransfer(&DMA_SPI, HAL_DMA_FULL_TRANSFER, 50) != HAL_OK)
+    {
+    };
+    //HAL_SPI_TransmitReceive(&SD_SPI_HANDLE, &dat, &rxDat, 1, 50);
+
     return rxDat;
 }
 
