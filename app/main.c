@@ -21,38 +21,6 @@
 
 log_t m_log_data[2][LOG_BUFFER];
 
-<<<<<<< HEAD
-void main(void)
-{
-    HAL_Init();
-    SystemClock_Config();
-
-    MX_GPIO_Init();
-    MX_RTC_Init();
-
-    MX_TIM1_Init(); // motor control ch1 left motor ch4 right motor
-    MX_TIM4_Init(); // control algorithm
-
-    // uSD card
-    MX_DMA_Init();
-    MX_SPI1_Init();
-    MX_FATFS_Init();
-
-    fatfs_test();
-
-    MX_I2C1_Init(); // IMU sensor
-
-    cli_init();
-
-    encoder_init(&htim3, &htim2, 40);
-    mpu9250_init();
-
-    control_state_set(0, 0, 0, 0, 0, 0);
-    control_pid_set(&pid_pitch, 10, 0, 0);
-    control_pid_set(&pid_roll, 0, 0, 0);
-
-    control_init(&htim1, TIM_CHANNEL_1, TIM_CHANNEL_4, 5.7f);
-=======
 volatile float pitch;
 
 void main(void)
@@ -82,7 +50,6 @@ void main(void)
     control_pid_set(&pid_roll, 0, 0, 0);
     control_init(&htim1, TIM_CHANNEL_1, TIM_CHANNEL_4, 5.7f);
 
->>>>>>> d021ffa (Code reorganization)
     logger_init();
 
     HAL_TIM_Base_Start_IT(&htim4);
@@ -91,26 +58,18 @@ void main(void)
         HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
         HAL_Delay(10);
         cli_main();
-<<<<<<< HEAD
-=======
         if (log_buffer_ready())
         {
             save_log(m_log_data[log_buffer_ready_get()]);
         }
->>>>>>> d021ffa (Code reorganization)
     }
 }
 
 void TIM4_IRQHandler(void)
 {
     // Get measurements
-<<<<<<< HEAD
-    static int buffer_idx = 0;
-    static int sample = 0;
-=======
     static uint8_t buffer_idx = 0;
     static uint8_t sample = 0;
->>>>>>> d021ffa (Code reorganization)
 
     int8_t control_l, control_r;
     control_state_t twip_state;
@@ -120,13 +79,8 @@ void TIM4_IRQHandler(void)
     inv_get_gyro_set_raw(m_log_data[buffer_idx][sample].gyro_raw, NULL, NULL);
     inv_get_sensor_type_euler(m_log_data[buffer_idx][sample].euler, NULL, NULL);
 
-<<<<<<< HEAD
-    m_log_data[buffer_idx][sample].angle_l = (int32_t)encoder_get_angle_deg(&encoder_left) * 65536;
-    m_log_data[buffer_idx][sample].angle_r = (int32_t)encoder_get_angle_deg(&encoder_right) * 65536;
-=======
     m_log_data[buffer_idx][sample].angle_l = (int32_t)encoder_get_angle_deg(&encoder_left) * 128;
     m_log_data[buffer_idx][sample].angle_r = (int32_t)encoder_get_angle_deg(&encoder_right) * 128;
->>>>>>> d021ffa (Code reorganization)
 
     // Calculate control
     twip_state.pitch = inv_q16_to_float(m_log_data[buffer_idx][sample].euler[1]);
@@ -143,18 +97,10 @@ void TIM4_IRQHandler(void)
     sample++;
     if (sample == LOG_BUFFER)
     {
-<<<<<<< HEAD
-        save_log(m_log_data[buffer_idx]);
-        sample = 0;
-        buffer_idx = ~buffer_idx & 0x1;
-    }
-
-=======
         log_buffer_ready_set(buffer_idx);
         sample = 0;
         buffer_idx = ~buffer_idx & 0x1;
     }
     pitch = twip_state.pitch;
->>>>>>> d021ffa (Code reorganization)
     HAL_TIM_IRQHandler(&htim4);
 }

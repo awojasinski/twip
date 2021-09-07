@@ -115,16 +115,7 @@ static BYTE xchg_spi(
 )
 {
     BYTE rxDat;
-<<<<<<< HEAD
-    HAL_SPI_TransmitReceive_DMA(&SD_SPI_HANDLE, &dat, &rxDat, 1);
-    while (HAL_DMA_PollForTransfer(&DMA_SPI, HAL_DMA_FULL_TRANSFER, 50) != HAL_OK)
-    {
-    };
-    //HAL_SPI_TransmitReceive(&SD_SPI_HANDLE, &dat, &rxDat, 1, 50);
-=======
-    //HAL_SPI_TransmitReceive_DMA(&SD_SPI_HANDLE, &dat, &rxDat, 1);
     HAL_SPI_TransmitReceive(&SD_SPI_HANDLE, &dat, &rxDat, 1, 50);
->>>>>>> d021ffa (Code reorganization)
 
     return rxDat;
 }

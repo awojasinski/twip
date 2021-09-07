@@ -353,15 +353,9 @@ TIM1.PeriodNoDither=1062
 TIM1.Prescaler=8
 TIM2.CounterMode=TIM_COUNTERMODE_DOWN
 TIM2.EncoderMode=TIM_ENCODERMODE_TI12
-<<<<<<< HEAD
-TIM2.IC1Filter=5
-TIM2.IC2Filter=5
-TIM2.IPParameters=EncoderMode,IC1Filter,IC2Filter,PeriodNoDither
-=======
 TIM2.IC1Filter=15
 TIM2.IC2Filter=15
 TIM2.IPParameters=EncoderMode,IC1Filter,IC2Filter,PeriodNoDither,CounterMode
->>>>>>> d021ffa (Code reorganization)
 TIM2.PeriodNoDither=2058
 TIM3.EncoderMode=TIM_ENCODERMODE_TI12
 TIM3.IC1Filter=15

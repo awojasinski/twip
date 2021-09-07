@@ -56,11 +56,6 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-<<<<<<< HEAD
-extern DMA_HandleTypeDef hdma_spi1_rx;
-=======
-
->>>>>>> d021ffa (Code reorganization)
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */

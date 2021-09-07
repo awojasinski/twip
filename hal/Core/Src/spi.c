@@ -57,10 +57,6 @@ void MX_SPI1_Init(void)
     Error_Handler(__FILE__, __LINE__);
   }
   /* USER CODE BEGIN SPI1_Init 2 */
-<<<<<<< HEAD
-  HAL_SPI_MspInit(&hspi1);
-=======
->>>>>>> d021ffa (Code reorganization)
   /* USER CODE END SPI1_Init 2 */
 }
 
@@ -97,27 +93,6 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *spiHandle)
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-<<<<<<< HEAD
-    /* SPI1 DMA Init */
-    /* SPI1_TX Init */
-    hdma_spi1_rx.Instance = DMA1_Channel1;
-    hdma_spi1_rx.Init.Request = DMA_REQUEST_SPI1_RX;
-    hdma_spi1_rx.Init.Direction = DMA_MEMORY_TO_PERIPH;
-    hdma_spi1_rx.Init.PeriphInc = DMA_PINC_DISABLE;
-    hdma_spi1_rx.Init.MemInc = DMA_MINC_ENABLE;
-    hdma_spi1_rx.Init.PeriphDataAlignment = DMA_PDATAALIGN_BYTE;
-    hdma_spi1_rx.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
-    hdma_spi1_rx.Init.Mode = DMA_NORMAL;
-    hdma_spi1_rx.Init.Priority = DMA_PRIORITY_HIGH;
-    if (HAL_DMA_Init(&hdma_spi1_rx) != HAL_OK)
-    {
-      Error_Handler(__FILE__, __LINE__);
-    }
-
-    __HAL_LINKDMA(spiHandle, hdmatx, hdma_spi1_rx);
-
-=======
->>>>>>> d021ffa (Code reorganization)
     /* USER CODE BEGIN SPI1_MspInit 1 */
 
     /* USER CODE END SPI1_MspInit 1 */
@@ -147,7 +122,7 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *spiHandle)
 <<<<<<< HEAD
     /* SPI1 DMA DeInit */
     HAL_DMA_DeInit(spiHandle->hdmatx);
-=======
+    == == == =
 >>>>>>> d021ffa (Code reorganization)
     /* USER CODE BEGIN SPI1_MspDeInit 1 */
 
