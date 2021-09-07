@@ -29,6 +29,12 @@ void logger_init(void);
 void logger_deinit(void);
 void save_log(log_t const *);
 FRESULT log_data(char *, UINT);
+<<<<<<< HEAD
+=======
+void log_buffer_ready_set(uint8_t);
+uint8_t log_buffer_ready_get(void);
+bool log_buffer_ready(void);
+>>>>>>> d021ffa (Code reorganization)
 void logger_sd_card_detection_irq(void);
 
 void fatfs_test(void);

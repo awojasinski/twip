@@ -57,7 +57,10 @@ void MX_SPI1_Init(void)
     Error_Handler(__FILE__, __LINE__);
   }
   /* USER CODE BEGIN SPI1_Init 2 */
+<<<<<<< HEAD
   HAL_SPI_MspInit(&hspi1);
+=======
+>>>>>>> d021ffa (Code reorganization)
   /* USER CODE END SPI1_Init 2 */
 }
 
@@ -94,6 +97,7 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *spiHandle)
     GPIO_InitStruct.Alternate = GPIO_AF5_SPI1;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+<<<<<<< HEAD
     /* SPI1 DMA Init */
     /* SPI1_TX Init */
     hdma_spi1_rx.Instance = DMA1_Channel1;
@@ -112,6 +116,8 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef *spiHandle)
 
     __HAL_LINKDMA(spiHandle, hdmatx, hdma_spi1_rx);
 
+=======
+>>>>>>> d021ffa (Code reorganization)
     /* USER CODE BEGIN SPI1_MspInit 1 */
 
     /* USER CODE END SPI1_MspInit 1 */
@@ -138,8 +144,11 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *spiHandle)
 
     HAL_GPIO_DeInit(GPIOB, SD_card_MISO_Pin | SD_card_MOSI_Pin);
 
+<<<<<<< HEAD
     /* SPI1 DMA DeInit */
     HAL_DMA_DeInit(spiHandle->hdmatx);
+=======
+>>>>>>> d021ffa (Code reorganization)
     /* USER CODE BEGIN SPI1_MspDeInit 1 */
 
     /* USER CODE END SPI1_MspDeInit 1 */

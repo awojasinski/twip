@@ -11,6 +11,8 @@ volatile FRESULT logger_result;
 
 volatile bool sd_card_inserted = false;
 volatile bool log_file_created = false;
+static volatile bool is_buffer_ready = false;
+static volatile uint8_t buffer_idx = 0;
 
 void logger_init()
 {
@@ -22,9 +24,35 @@ void logger_init()
             {
                 sd_card_inserted = true;
                 cli_printf("SD card detected!");
+<<<<<<< HEAD
                 if (f_open(&logger_file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS | FA_CREATE_ALWAYS | FA_OPEN_APPEND) == FR_OK)
+=======
+                if (f_open(&logger_file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS | FA_CREATE_ALWAYS | FA_CREATE_NEW) == FR_OK)
+>>>>>>> d021ffa (Code reorganization)
                 {
                     log_file_created = true;
+                    f_printf(&logger_file,
+                             "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s\n",
+                             "acc",
+                             "acc",
+                             "acc",
+                             "gyro",
+                             "gyro",
+                             "gyro",
+                             "gyro_raw",
+                             "gyro_raw",
+                             "gyro_raw",
+                             "euler",
+                             "euler",
+                             "euler",
+                             "control_l",
+                             "control_r",
+                             "angle_l",
+                             "angle_r");
+                    if (f_close(&logger_file) == FR_OK)
+                    {
+                        f_open(&logger_file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND | FA_OPEN_EXISTING);
+                    }
                 }
             }
         }
@@ -47,7 +75,11 @@ void logger_deinit()
 
 void save_log(log_t const *p_log_data)
 {
+<<<<<<< HEAD
     if (p_log_data != NULL)
+=======
+    if (p_log_data != NULL && is_buffer_ready)
+>>>>>>> d021ffa (Code reorganization)
     {
         for (size_t i = 0; i < LOG_BUFFER; i++)
         {
@@ -70,6 +102,14 @@ void save_log(log_t const *p_log_data)
                      p_log_data[i].angle_l,
                      p_log_data[i].angle_r);
         }
+<<<<<<< HEAD
+=======
+        if (f_close(&logger_file) == FR_OK)
+        {
+            f_open(&logger_file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND | FA_OPEN_EXISTING);
+        }
+        is_buffer_ready = false;
+>>>>>>> d021ffa (Code reorganization)
     }
 }
 
@@ -83,6 +123,25 @@ FRESULT log_data(char *str, UINT len)
     return FR_NO_FILE;
 }
 
+<<<<<<< HEAD
+=======
+void log_buffer_ready_set(uint8_t idx)
+{
+    buffer_idx = idx;
+    is_buffer_ready = true;
+}
+
+uint8_t log_buffer_ready_get()
+{
+    return buffer_idx;
+}
+
+bool log_buffer_ready()
+{
+    return is_buffer_ready;
+}
+
+>>>>>>> d021ffa (Code reorganization)
 void fatfs_test()
 {
     FATFS FS;
