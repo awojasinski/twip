@@ -52,11 +52,10 @@ extern "C"
   /* USER CODE END EM */
 
   /* Exported functions prototypes ---------------------------------------------*/
+
+  /* USER CODE BEGIN EFP */
   void Error_Handler(char *, int);
   void SystemClock_Config(void);
-
-/* USER CODE BEGIN EFP */
-
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
@@ -116,7 +115,6 @@ extern "C"
 #define SD_CS_GPIO_Port LD2_GPIO_Port
 #define SD_CS_Pin LD2_Pin
 
-#define DMA_SPI hdma_spi1_rx
 #define SD_SPI_HANDLE hspi1
   /* USER CODE END Private defines */
 

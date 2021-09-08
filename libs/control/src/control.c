@@ -62,14 +62,40 @@ void control_pid_set(control_pid_t *p_pid, float p, float i, float d)
 
 void control_signal_get(int8_t *control_r, int8_t *control_l, control_state_t *p_state)
 {
-    static float error_pitch;
-    static float error_roll;
+    static float error_pitch, error_pitch_i;
+    static float error_roll, error_roll_i;
 
+    int16_t control;
     error_pitch = m_control_desc.theta - p_state->pitch;
-    error_roll = m_control_desc.phi - p_state->roll;
+    error_pitch_i += error_pitch * 0.01f;
+    if (error_pitch_i > 400)
+        error_pitch_i = 400;
+    else if (error_pitch_i < -400)
+        error_pitch_i = -400;
 
-    *control_l = (int8_t)(error_pitch * pid_pitch.p - error_roll * pid_roll.p);
-    *control_r = *control_l;
+    error_roll = m_control_desc.dphi - p_state->droll;
+    error_roll_i += error_roll * 0.01f;
+    if (error_roll_i > 400)
+        error_roll_i = 400;
+    else if (error_roll_i < -400)
+        error_roll_i = -400;
+
+    control = (int16_t)(error_pitch * pid_pitch.p +
+                        error_pitch_i * pid_pitch.i +
+                        error_roll * pid_roll.p +
+                        error_roll_i * pid_roll.i);
+
+    if (control > 100)
+    {
+        control = 100;
+    }
+    else if (control < -100)
+    {
+        control = -100;
+    }
+
+    *control_l = (int8_t)control;
+    *control_r = (int8_t)control;
 }
 
 void control_dirve_motors(int8_t control, control_channel_t ch)
@@ -86,13 +112,13 @@ void control_dirve_motors(int8_t control, control_channel_t ch)
 
     if (control > 0)
     {
-        HAL_GPIO_WritePin(gpio1, pin1, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(gpio2, pin2, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(gpio1, pin1, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(gpio2, pin2, GPIO_PIN_SET);
     }
     else if (control < 0)
     {
-        HAL_GPIO_WritePin(gpio1, pin1, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(gpio2, pin2, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(gpio1, pin1, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(gpio2, pin2, GPIO_PIN_RESET);
     }
     else
     {

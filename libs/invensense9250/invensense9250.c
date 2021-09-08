@@ -28,15 +28,15 @@ struct platform_data_s
  * chip-to-body matrix for your particular set up.
  */
 static struct platform_data_s gyro_pdata = {
-    .orientation = {-1, 0, 0,
-                    0, -1, 0,
+    .orientation = {1, 0, 0,
+                    0, 1, 0,
                     0, 0, 1}};
 
 #if defined MPU9150 || defined MPU9250
 static struct platform_data_s compass_pdata = {
     .orientation = {0, 1, 0,
-                    -1, 0, 0,
-                    0, 0, 1}};
+                    1, 0, 0,
+                    0, 0, -1}};
 #define COMPASS_ENABLED 1
 #elif defined AK8975_SECONDARY
 static struct platform_data_s compass_pdata = {
@@ -77,7 +77,6 @@ void mpu9250_init(void)
         {
             log_e("Could not initialize MPL.");
         }
-
         inv_enable_quaternion();
         inv_enable_9x_sensor_fusion();
 
@@ -113,7 +112,7 @@ void mpu9250_init(void)
 #endif
         /* Push both gyro and accel data into the FIFO. */
         mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-        mpu_set_sample_rate(5 * DEFAULT_MPU_HZ);
+        mpu_set_sample_rate(1000);
 #ifdef COMPASS_ENABLED
         /* The compass sampling rate can be less than the gyro/accel sampling rate.
        * Use this function for proper power management.
@@ -121,10 +120,13 @@ void mpu9250_init(void)
         mpu_set_compass_sample_rate(1000 / COMPASS_READ_MS);
 #endif
         /* Read back configuration in case it was set improperly. */
+        mpu_set_accel_fsr(4);
+        mpu_set_gyro_fsr(1000);
+
         mpu_get_sample_rate(&gyro_rate);
         mpu_get_gyro_fsr(&gyro_fsr);
         mpu_get_accel_fsr(&accel_fsr);
-        mpu_set_lpf(20);
+        mpu_set_lpf(42);
 #ifdef COMPASS_ENABLED
         mpu_get_compass_fsr(&compass_fsr);
 #endif
@@ -174,6 +176,8 @@ void mpu9250_init(void)
                            DMP_FEATURE_SEND_RAW_ACCEL |
                            DMP_FEATURE_SEND_CAL_GYRO |
                            DMP_FEATURE_GYRO_CAL;
+        //long accel_bias[] = {-540672, 20013056, 24920064};
+        //long gyro_bias[] = {1156396, -4382900, 1695366};
 
         mpu9250_backend_config(&hal.dmp_features);
 
@@ -202,7 +206,7 @@ void mpu9250_backend_config(unsigned short *features)
     dmp_set_orientation(
         inv_orientation_matrix_to_scalar(gyro_pdata.orientation));
     dmp_enable_feature(hal.dmp_features);
-    dmp_set_fifo_rate(DEFAULT_MPU_HZ);
+    dmp_set_fifo_rate(200);
     //dmp_set_interrupt_mode(DMP_INT_CONTINUOUS);
     mpu_set_dmp_state(1);
     hal.dmp_on = 1;
@@ -297,6 +301,14 @@ void run_self_test(void)
         gyro[1] = (long)((float)gyro[1] * gyro_sens);
         gyro[2] = (long)((float)gyro[2] * gyro_sens);
         inv_set_gyro_bias(gyro, 3);
+        MPL_LOGI("accel: %ld %ld %ld\n",
+                 accel[0],
+                 accel[1],
+                 accel[2]);
+        MPL_LOGI("gyro: %ld %ld %ld\n",
+                 gyro[0],
+                 gyro[1],
+                 gyro[2]);
 #endif
     }
     else
@@ -333,7 +345,6 @@ void EXTI4_IRQHandler(void)
                 mpu_get_temperature(&temperature, &sensor_timestamp);
                 inv_build_temp(temperature, sensor_timestamp);
             }
-            inv_execute_on_data();
         }
         if (sensors & INV_XYZ_ACCEL)
         {
@@ -341,7 +352,6 @@ void EXTI4_IRQHandler(void)
             accel[1] = (long)accel_short[1];
             accel[2] = (long)accel_short[2];
             inv_build_accel(accel, 3, sensor_timestamp);
-            inv_execute_on_data();
         }
         if (sensors & INV_WXYZ_QUAT)
         {
@@ -361,11 +371,9 @@ void EXTI4_IRQHandler(void)
             compass[1] = (long)compass_short[1];
             compass[2] = (long)compass_short[2];
             inv_build_compass(compass, 0, sensor_timestamp);
-            inv_execute_on_data();
         }
     }
 #endif
-    //
     inv_execute_on_data();
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
 }

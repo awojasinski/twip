@@ -38,7 +38,7 @@
 
 #define PEDO_READ_MS (1000)
 #define TEMP_READ_MS (500)
-#define COMPASS_READ_MS (100)
+#define COMPASS_READ_MS (10)
 
 struct rx_s
 {

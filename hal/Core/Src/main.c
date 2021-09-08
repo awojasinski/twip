@@ -20,8 +20,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cordic.h"
-#include "dma.h"
 #include "app_fatfs.h"
+#include "fmac.h"
 #include "i2c.h"
 #include "rtc.h"
 #include "spi.h"

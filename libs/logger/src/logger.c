@@ -1,55 +1,37 @@
 #include "stm32g4xx_hal.h"
+#include "main.h"
+
+#include "string.h"
 
 #include "cli.h"
 #include "logger.h"
 
-#define __LOG_BUFFER_SIZE 100
+#define __LOG_FILENAME "log.bin"
+
+//static log_t *logger_read(void);
 
 FATFS FileSystem;
 FIL logger_file;
-volatile FRESULT logger_result;
 
-volatile bool sd_card_inserted = false;
-volatile bool log_file_created = false;
-static volatile bool is_buffer_ready = false;
-static volatile uint8_t buffer_idx = 0;
+volatile bool logger_initialized = false;
+log_t log_buffer[LOG_FIFO_SIZE];
+log_t *p_log_buffer[LOG_FIFO_SIZE];
+static volatile log_fifo_t m_logger_fifo =
+    {.tail = 0,
+     .head = 0,
+     .size = LOG_FIFO_SIZE,
+     .data = p_log_buffer};
 
 void logger_init()
 {
-    if (!sd_card_inserted)
+    if (HAL_GPIO_ReadPin(SD_card_detection_GPIO_Port, SD_card_detection_Pin) == GPIO_PIN_SET)
     {
-        if (HAL_GPIO_ReadPin(SD_card_detection_GPIO_Port, SD_card_detection_Pin) == GPIO_PIN_SET)
+        if (f_mount((FATFS *)&FileSystem, "", 1) == FR_OK)
         {
-            if (f_mount((FATFS *)&FileSystem, "", 1) == FR_OK)
+            cli_printf("SD card detected!");
+            if (f_open(&logger_file, __LOG_FILENAME, FA_WRITE | FA_CREATE_ALWAYS) == FR_OK)
             {
-                sd_card_inserted = true;
-                cli_printf("SD card detected!");
-                if (f_open(&logger_file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS | FA_CREATE_ALWAYS | FA_CREATE_NEW) == FR_OK)
-                {
-                    log_file_created = true;
-                    f_printf(&logger_file,
-                             "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s\n",
-                             "acc",
-                             "acc",
-                             "acc",
-                             "gyro",
-                             "gyro",
-                             "gyro",
-                             "gyro_raw",
-                             "gyro_raw",
-                             "gyro_raw",
-                             "euler",
-                             "euler",
-                             "euler",
-                             "control_l",
-                             "control_r",
-                             "angle_l",
-                             "angle_r");
-                    if (f_close(&logger_file) == FR_OK)
-                    {
-                        f_open(&logger_file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND | FA_OPEN_EXISTING);
-                    }
-                }
+                logger_initialized = true;
             }
         }
     }
@@ -57,75 +39,56 @@ void logger_init()
 
 void logger_deinit()
 {
-    if (sd_card_inserted)
+    if (logger_initialized)
     {
-        sd_card_inserted = false;
         if (f_close(&logger_file) == FR_OK)
         {
-            log_file_created = false;
+            logger_initialized = false;
         };
         cli_printf("SD card removed!");
         f_mount(NULL, "", 1);
     }
 }
 
-void save_log(log_t const *p_log_data)
+void logger_main()
 {
-    if (p_log_data != NULL && is_buffer_ready)
+    static bool sync = false;
+    log_t *p_log = logger_read();
+
+    if (p_log != NULL && logger_initialized)
     {
-        for (size_t i = 0; i < LOG_BUFFER; i++)
+        f_write(&logger_file, p_log, sizeof(log_t), NULL);
+        if (sync)
         {
-            f_printf(&logger_file,
-                     "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d\n",
-                     p_log_data[i].acc[0],
-                     p_log_data[i].acc[1],
-                     p_log_data[i].acc[2],
-                     p_log_data[i].gyro[0],
-                     p_log_data[i].gyro[1],
-                     p_log_data[i].gyro[2],
-                     p_log_data[i].gyro_raw[0],
-                     p_log_data[i].gyro_raw[1],
-                     p_log_data[i].gyro_raw[2],
-                     p_log_data[i].euler[0],
-                     p_log_data[i].euler[1],
-                     p_log_data[i].euler[2],
-                     p_log_data[i].control_l,
-                     p_log_data[i].control_r,
-                     p_log_data[i].angle_l,
-                     p_log_data[i].angle_r);
+            f_sync(&logger_file);
         }
-        if (f_close(&logger_file) == FR_OK)
-        {
-            f_open(&logger_file, "log.txt", FA_WRITE | FA_OPEN_ALWAYS | FA_OPEN_APPEND | FA_OPEN_EXISTING);
-        }
-        is_buffer_ready = false;
+        sync = !sync;
     }
 }
 
-FRESULT log_data(char *str, UINT len)
+int8_t logger_write(log_t *p_log)
 {
-    if (log_file_created)
+    if ((m_logger_fifo.head + 1) % m_logger_fifo.size == m_logger_fifo.tail)
     {
-        UINT bytesWrote;
-        return f_write(&logger_file, str, len, &bytesWrote);
+        return -1;
     }
-    return FR_NO_FILE;
+    memcpy(&log_buffer[m_logger_fifo.head], p_log, sizeof(log_t));
+    m_logger_fifo.data[m_logger_fifo.head] = &log_buffer[m_logger_fifo.head];
+    m_logger_fifo.head = (m_logger_fifo.head + 1) % m_logger_fifo.size;
+    return 0;
 }
 
-void log_buffer_ready_set(uint8_t idx)
+log_t *logger_read()
 {
-    buffer_idx = idx;
-    is_buffer_ready = true;
-}
+    if (m_logger_fifo.tail == m_logger_fifo.head)
+    {
+        return NULL;
+    }
+    log_t *p_handle = m_logger_fifo.data[m_logger_fifo.tail];
+    m_logger_fifo.data[m_logger_fifo.tail] = NULL;
+    m_logger_fifo.tail = (m_logger_fifo.tail + 1) % m_logger_fifo.size;
 
-uint8_t log_buffer_ready_get()
-{
-    return buffer_idx;
-}
-
-bool log_buffer_ready()
-{
-    return is_buffer_ready;
+    return p_handle;
 }
 
 void fatfs_test()
@@ -227,6 +190,10 @@ void EXTI9_5_IRQHandler()
         if (HAL_GPIO_ReadPin(SD_card_detection_GPIO_Port, SD_card_detection_Pin) == GPIO_PIN_RESET)
         {
             logger_deinit();
+        }
+        else
+        {
+            logger_init();
         }
     }
     HAL_GPIO_EXTI_IRQHandler(SD_card_detection_Pin);

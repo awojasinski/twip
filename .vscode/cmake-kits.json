@@ -1,9 +1,0 @@
-[
-    {
-        "name": "arm-none-eabi-gcc M4 toolchain",
-        "toolchainFile": "${workspaceRoot}/cmake/toolchain-m4.cmake",
-        "preferredGenerator": {
-            "name": "Unix Makefiles"
-        }
-    }
-]

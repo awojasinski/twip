@@ -21,17 +21,17 @@ set_target_properties(${PROJECT_NAME}
 
 target_compile_options(${PROJECT_NAME}
     PRIVATE
-        -Wall
+        #-Wall
         -Wextra
         -Wpedantic
-        -Werror
+        #-Werror
         -Wduplicated-cond
         -Wduplicated-branches
         -Wno-unused-variable
         -Wlogical-op
         -Wnull-dereference
         -Wconversion
-        -Wsign-conversion
+        #-Wsign-conversion
 )
 
 target_include_directories(${PROJECT_NAME}

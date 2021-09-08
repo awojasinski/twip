@@ -25,33 +25,33 @@
 //It is designed to be wrapped by a cubemx generated user_diskio.c file.
 
 #include "stm32g4xx_hal.h" /* Provide the low-level HAL functions */
+#include "spi.h"
 #include "user_diskio_spi.h"
 
 //Make sure you set #define SD_SPI_HANDLE as some hspix in main.h
 //Make sure you set #define SD_CS_GPIO_Port as some GPIO port in main.h
 //Make sure you set #define SD_CS_Pin as some GPIO pin in main.h
 extern SPI_HandleTypeDef SD_SPI_HANDLE;
-extern DMA_HandleTypeDef DMA_SPI;
 
 /* Function prototypes */
 
 //(Note that the _256 is used as a mask to clear the prescalar bits as it provides binary 111 in the correct position)
 #define FCLK_SLOW()                                                                                    \
     {                                                                                                  \
-        MODIFY_REG(SD_SPI_HANDLE.Instance->CR1, SPI_BAUDRATEPRESCALER_256, SPI_BAUDRATEPRESCALER_256); \
+        MODIFY_REG(SD_SPI_HANDLE.Instance->CR1, SPI_BAUDRATEPRESCALER_256, SPI_BAUDRATEPRESCALER_128); \
     } /* Set SCLK = slow, approx 280 KBits/s*/
-#define FCLK_FAST()                                                                                   \
-    {                                                                                                 \
-        MODIFY_REG(SD_SPI_HANDLE.Instance->CR1, SPI_BAUDRATEPRESCALER_256, SPI_BAUDRATEPRESCALER_64); \
+#define FCLK_FAST()                                                                                  \
+    {                                                                                                \
+        MODIFY_REG(SD_SPI_HANDLE.Instance->CR1, SPI_BAUDRATEPRESCALER_256, SPI_BAUDRATEPRESCALER_8); \
     } /* Set SCLK = fast, approx 4.5 MBits/s */
 
-#define CS_HIGH()                                                    \
-    {                                                                \
-        HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_SET); \
+#define CS_HIGH()                                                                 \
+    {                                                                             \
+        __NOP(); /*HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_SET);*/ \
     }
-#define CS_LOW()                                                       \
-    {                                                                  \
-        HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET); \
+#define CS_LOW()                                                                    \
+    {                                                                               \
+        __NOP(); /*HAL_GPIO_WritePin(SD_CS_GPIO_Port, SD_CS_Pin, GPIO_PIN_RESET);*/ \
     }
 
 /*--------------------------------------------------------------------------
@@ -115,7 +115,7 @@ static BYTE xchg_spi(
 )
 {
     BYTE rxDat;
-    HAL_SPI_TransmitReceive(&SD_SPI_HANDLE, &dat, &rxDat, 1, 50);
+    HAL_SPI_TransmitReceive(&SD_SPI_HANDLE, &dat, &rxDat, 1, 200);
 
     return rxDat;
 }
@@ -130,6 +130,7 @@ static void rcvr_spi_multi(
     {
         *(buff + i) = xchg_spi(0xFF);
     }
+    //HAL_SPI_Receive(&SD_SPI_HANDLE, buff, btr, 50);
 }
 
 #if _USE_WRITE
@@ -139,10 +140,13 @@ static void xmit_spi_multi(
     UINT btx          /* Number of bytes to send (even number) */
 )
 {
+    /*
     for (UINT i = 0; i < btx; i++)
     {
         xchg_spi(*(buff + i));
     }
+    */
+    HAL_SPI_Transmit(&SD_SPI_HANDLE, buff, btx, 1000);
 }
 #endif
 

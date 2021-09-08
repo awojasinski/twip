@@ -25,7 +25,6 @@
 /* USER CODE END 0 */
 
 SPI_HandleTypeDef hspi1;
-DMA_HandleTypeDef hdma_spi1_rx;
 
 /* SPI1 init function */
 void MX_SPI1_Init(void)
@@ -119,11 +118,6 @@ void HAL_SPI_MspDeInit(SPI_HandleTypeDef *spiHandle)
 
     HAL_GPIO_DeInit(GPIOB, SD_card_MISO_Pin | SD_card_MOSI_Pin);
 
-<<<<<<< HEAD
-    /* SPI1 DMA DeInit */
-    HAL_DMA_DeInit(spiHandle->hdmatx);
-    == == == =
->>>>>>> d021ffa (Code reorganization)
     /* USER CODE BEGIN SPI1_MspDeInit 1 */
 
     /* USER CODE END SPI1_MspDeInit 1 */

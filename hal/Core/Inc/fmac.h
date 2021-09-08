@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * @file    dma.h
+  * @file    fmac.h
   * @brief   This file contains all the function prototypes for
-  *          the dma.c file
+  *          the fmac.c file
   ******************************************************************************
   * @attention
   *
@@ -17,8 +17,8 @@
   ******************************************************************************
   */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __DMA_H__
-#define __DMA_H__
+#ifndef __FMAC_H__
+#define __FMAC_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,17 +27,17 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-/* DMA memory to memory transfer handles -------------------------------------*/
-
 /* USER CODE BEGIN Includes */
 
 /* USER CODE END Includes */
+
+extern FMAC_HandleTypeDef hfmac;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
-void MX_DMA_Init(void);
+void MX_FMAC_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
@@ -47,6 +47,6 @@ void MX_DMA_Init(void);
 }
 #endif
 
-#endif /* __DMA_H__ */
+#endif /* __FMAC_H__ */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

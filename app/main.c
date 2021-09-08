@@ -1,9 +1,7 @@
-#include "string.h"
-
 #include "main.h"
 #include "app_fatfs.h"
 #include "cordic.h"
-#include "dma.h"
+#include "fmac.h"
 #include "i2c.h"
 #include "rtc.h"
 #include "spi.h"
@@ -18,10 +16,6 @@
 #include "logger.h"
 #include "encoder.h"
 #include "invensense9250.h"
-
-log_t m_log_data[2][LOG_BUFFER];
-
-volatile float pitch;
 
 void main(void)
 {
@@ -46,7 +40,7 @@ void main(void)
     mpu9250_init();
 
     control_state_set(0, 0, 0, 0, 0, 0);
-    control_pid_set(&pid_pitch, 10, 0, 0);
+    control_pid_set(&pid_pitch, 5, 0, 0);
     control_pid_set(&pid_roll, 0, 0, 0);
     control_init(&htim1, TIM_CHANNEL_1, TIM_CHANNEL_4, 5.7f);
 
@@ -55,52 +49,44 @@ void main(void)
     HAL_TIM_Base_Start_IT(&htim4);
     while (1)
     {
-        HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-        HAL_Delay(10);
-        cli_main();
-        if (log_buffer_ready())
-        {
-            save_log(m_log_data[log_buffer_ready_get()]);
-        }
+        //cli_main();
+        logger_main();
     }
 }
 
 void TIM4_IRQHandler(void)
 {
     // Get measurements
-    static uint8_t buffer_idx = 0;
-    static uint8_t sample = 0;
-
-    int8_t control_l, control_r;
+    log_t log_data;
+    int8_t control;
     control_state_t twip_state;
+    float angle_l, angle_r;
 
-    inv_get_accel(m_log_data[buffer_idx][sample].acc);
-    inv_get_gyro(m_log_data[buffer_idx][sample].gyro);
-    inv_get_gyro_set_raw(m_log_data[buffer_idx][sample].gyro_raw, NULL, NULL);
-    inv_get_sensor_type_euler(m_log_data[buffer_idx][sample].euler, NULL, NULL);
+    inv_get_accel(log_data.acc);
+    inv_get_gyro(log_data.gyro);
+    inv_get_sensor_type_euler(log_data.euler, NULL, NULL);
 
-    m_log_data[buffer_idx][sample].angle_l = (int32_t)encoder_get_angle_deg(&encoder_left) * 128;
-    m_log_data[buffer_idx][sample].angle_r = (int32_t)encoder_get_angle_deg(&encoder_right) * 128;
+    angle_l = encoder_get_angle_deg(&encoder_left);
+    angle_r = encoder_get_angle_deg(&encoder_right);
+
+    log_data.angle_l = (int32_t)(angle_l * 128);
+    log_data.angle_r = (int32_t)(angle_r * 128);
 
     // Calculate control
-    twip_state.pitch = inv_q16_to_float(m_log_data[buffer_idx][sample].euler[1]);
-    twip_state.yaw = inv_q16_to_float(m_log_data[buffer_idx][sample].euler[2]);
-    twip_state.roll = (encoder_get_angle_deg(&encoder_right) + encoder_get_angle_deg(&encoder_left)) / 2;
+    twip_state.pitch = inv_q16_to_float(log_data.euler[1]);
+    twip_state.roll = (angle_r + angle_l) / 2;
+    twip_state.droll = (encoder_get_velo(&encoder_left) + encoder_get_velo(&encoder_right)) / 2;
 
-    control_signal_get(&control_r, &control_l, &twip_state);
-    control_dirve_motors(control_r, CONTROL_RIGHT_WHEEL);
-    control_dirve_motors(control_l, CONTROL_LEFT_WHEEL);
+    control_signal_get(&control, &control, &twip_state);
+    control_dirve_motors(control, CONTROL_RIGHT_WHEEL);
+    control_dirve_motors(control, CONTROL_LEFT_WHEEL);
 
-    m_log_data[buffer_idx][sample].control_r = control_r;
-    m_log_data[buffer_idx][sample].control_l = control_l;
+    log_data.control = control;
+    log_data.velocity = (long)(twip_state.droll * 65536.f);
 
-    sample++;
-    if (sample == LOG_BUFFER)
-    {
-        log_buffer_ready_set(buffer_idx);
-        sample = 0;
-        buffer_idx = ~buffer_idx & 0x1;
-    }
-    pitch = twip_state.pitch;
+    // Add to FIFO
+    logger_write(&log_data);
+    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
     HAL_TIM_IRQHandler(&htim4);
 }
