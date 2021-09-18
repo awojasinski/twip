@@ -6,17 +6,5 @@
     "cmake.configureSettings": {},
     "C_Cpp.default.intelliSenseMode": "gcc-arm",
     "git.enableCommitSigning": true,
-    "files.associations": {
-        "cstdio": "c",
-        "stm32g4xx_hal.h": "c",
-        "main.h": "c",
-        "user_diskio_spi.h": "c",
-        "stm32g4xx_hal_conf.h": "c",
-        "stm32g4xx_hal_spi.h": "c",
-        "diskio.h": "c",
-        "invensense9250.h": "c",
-        "string.h": "c",
-        "data_builder.h": "c"
-    },
     "python.formatting.provider": "yapf"
 }

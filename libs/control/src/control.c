@@ -12,7 +12,6 @@ typedef struct
     TIM_HandleTypeDef *p_tim;
     uint32_t ch_r;
     uint32_t ch_l;
-    float control_limit;
 
 } control_config_t;
 
@@ -32,12 +31,11 @@ static control_desc_t m_control_desc;
 control_pid_t pid_pitch;
 control_pid_t pid_roll;
 
-void control_init(TIM_HandleTypeDef *p_pwm, uint32_t channel_right, uint32_t channel_left, float limit)
+void control_init(TIM_HandleTypeDef *p_pwm, uint32_t channel_right, uint32_t channel_left)
 {
     m_control_config.p_tim = p_pwm;
     m_control_config.ch_r = channel_right;
     m_control_config.ch_l = channel_left;
-    m_control_config.control_limit = limit;
 
     HAL_TIM_PWM_Start(p_pwm, channel_right);
     HAL_TIM_PWM_Start(p_pwm, channel_left);
@@ -100,7 +98,7 @@ void control_signal_get(int8_t *control_r, int8_t *control_l, control_state_t *p
 
 void control_dirve_motors(int8_t control, control_channel_t ch)
 {
-    uint32_t pwm = (uint32_t)abs((int)(control * m_control_config.control_limit));
+    uint32_t pwm = (uint32_t)abs((int)((control / 100) * (int)MAX_CONTROL_PWM));
 
     GPIO_TypeDef *gpio1 = ch == CONTROL_RIGHT_WHEEL ? Motor_R_direction1_GPIO_Port : Motor_L_direction1_GPIO_Port;
     GPIO_TypeDef *gpio2 = ch == CONTROL_RIGHT_WHEEL ? Motor_R_direction2_GPIO_Port : Motor_L_direction2_GPIO_Port;
@@ -108,7 +106,7 @@ void control_dirve_motors(int8_t control, control_channel_t ch)
     uint16_t pin1 = ch == CONTROL_RIGHT_WHEEL ? Motor_R_direction1_Pin : Motor_L_direction1_Pin;
     uint16_t pin2 = ch == CONTROL_RIGHT_WHEEL ? Motor_R_direction2_Pin : Motor_L_direction2_Pin;
 
-    pwm = pwm > (uint32_t)(m_control_config.control_limit * 100) ? (uint32_t)(m_control_config.control_limit * 100) : pwm;
+    pwm = pwm > MAX_CONTROL_PWM ? MAX_CONTROL_PWM : pwm;
 
     if (control > 0)
     {

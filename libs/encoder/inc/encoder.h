@@ -3,8 +3,7 @@
 
 #include "stm32g4xx_hal.h"
 
-//#define IMPUSLES_PER_TURN 2069
-#define IMPUSLES_PER_TURN 2059
+#define IMPUSLES_PER_TURN 1200
 
 typedef struct
 {

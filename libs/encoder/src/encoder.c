@@ -3,7 +3,7 @@
 #include "fir.h"
 
 #define MOVING_AVERAGE_SIZE 5
-#define MA_TO_RAD (100 * 2 * 3.1415f / IMPUSLES_PER_TURN)
+#define MA_TO_RAD (100 * 2 * 3.1415f / IMPUSLES_PER_TURN) //rad/s
 
 static inline void overflow_underflow_handler(encoder_t *);
 
