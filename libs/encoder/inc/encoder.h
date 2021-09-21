@@ -12,6 +12,7 @@ typedef struct
     int32_t encoder_cnt_new;
     int16_t full_turn;
     uint8_t wheel_r;
+    float velo;
 } encoder_t;
 
 extern encoder_t encoder_right, encoder_left;

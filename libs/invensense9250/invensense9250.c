@@ -112,7 +112,7 @@ void mpu9250_init(void)
 #endif
         /* Push both gyro and accel data into the FIFO. */
         mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-        mpu_set_sample_rate(1000);
+        mpu_set_sample_rate(500);
 #ifdef COMPASS_ENABLED
         /* The compass sampling rate can be less than the gyro/accel sampling rate.
        * Use this function for proper power management.
@@ -126,7 +126,7 @@ void mpu9250_init(void)
         mpu_get_sample_rate(&gyro_rate);
         mpu_get_gyro_fsr(&gyro_fsr);
         mpu_get_accel_fsr(&accel_fsr);
-        mpu_set_lpf(42);
+        mpu_set_lpf(48);
 #ifdef COMPASS_ENABLED
         mpu_get_compass_fsr(&compass_fsr);
 #endif
@@ -176,8 +176,11 @@ void mpu9250_init(void)
                            DMP_FEATURE_SEND_RAW_ACCEL |
                            DMP_FEATURE_SEND_CAL_GYRO |
                            DMP_FEATURE_GYRO_CAL;
-        //long accel_bias[] = {-540672, 20013056, 24920064};
-        //long gyro_bias[] = {1156396, -4382900, 1695366};
+        //long accel_bias[] = {-12124160, 17506304, 23789568};
+        //long gyro_bias[] = {1153116, -4075826, 1072953};
+
+        //inv_set_accel_bias(accel_bias, 2);
+        //inv_set_gyro_bias(gyro_bias, 2);
 
         mpu9250_backend_config(&hal.dmp_features);
 
@@ -207,8 +210,8 @@ void mpu9250_backend_config(unsigned short *features)
         inv_orientation_matrix_to_scalar(gyro_pdata.orientation));
     dmp_enable_feature(hal.dmp_features);
     dmp_set_fifo_rate(200);
-    //dmp_set_interrupt_mode(DMP_INT_CONTINUOUS);
     mpu_set_dmp_state(1);
+    //dmp_set_interrupt_mode(DMP_INT_CONTINUOUS);
     hal.dmp_on = 1;
 }
 

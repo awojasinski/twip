@@ -4,7 +4,7 @@
 #include "tim.h"
 #include "gpio.h"
 
-#define MAX_CONTROL_PWM (htim1.Init.Period)
+#define MAX_CONTROL_PWM 1062
 
 typedef enum controler_type_t
 {
@@ -47,6 +47,7 @@ void control_algorithm_set(controler_type_t);
 void control_state_set(float, float, float, float, float, float);
 void control_pid_set(control_pid_t *, float, float, float);
 void control_signal_get(int8_t *, int8_t *, control_state_t *);
+void control_errors_clear(void);
 void control_dirve_motors(int8_t, control_channel_t);
 
 #endif

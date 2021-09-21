@@ -25,8 +25,17 @@ typedef struct
     float dpsi;
 } control_desc_t;
 
+typedef struct
+{
+    float err;
+    float err_i;
+    float err_d;
+    float last;
+} error_t;
+
 static control_config_t m_control_config;
 static control_desc_t m_control_desc;
+static error_t err_pitch, err_roll;
 
 control_pid_t pid_pitch;
 control_pid_t pid_roll;
@@ -58,30 +67,45 @@ void control_pid_set(control_pid_t *p_pid, float p, float i, float d)
     p_pid->d = d;
 }
 
+void control_errors_clear()
+{
+    err_pitch.err = 0;
+    err_pitch.err_i = 0;
+    err_pitch.err_d = 0;
+    err_pitch.last = 0;
+
+    err_roll.err = 0;
+    err_roll.err_i = 0;
+    err_roll.err_d = 0;
+}
+
 void control_signal_get(int8_t *control_r, int8_t *control_l, control_state_t *p_state)
 {
-    static float error_pitch, error_pitch_i;
-    static float error_roll, error_roll_i;
-
     int16_t control;
-    error_pitch = m_control_desc.theta - p_state->pitch;
-    error_pitch_i += error_pitch * 0.01f;
-    if (error_pitch_i > 400)
-        error_pitch_i = 400;
-    else if (error_pitch_i < -400)
-        error_pitch_i = -400;
+    err_pitch.err = m_control_desc.theta + p_state->pitch;
+    err_pitch.err_i += err_pitch.err * 0.01f;
+    err_pitch.err_d = -(p_state->pitch - err_pitch.last) / 0.01f;
+    err_pitch.last = p_state->pitch;
 
-    error_roll = m_control_desc.dphi - p_state->droll;
-    error_roll_i += error_roll * 0.01f;
-    if (error_roll_i > 400)
-        error_roll_i = 400;
-    else if (error_roll_i < -400)
-        error_roll_i = -400;
+    if (err_pitch.err_i > 400)
+        err_pitch.err_i = 400;
+    else if (err_pitch.err_i < -400)
+        err_pitch.err_i = -400;
 
-    control = (int16_t)(error_pitch * pid_pitch.p +
-                        error_pitch_i * pid_pitch.i +
-                        error_roll * pid_roll.p +
-                        error_roll_i * pid_roll.i);
+    err_roll.err = m_control_desc.phi + p_state->roll;
+    err_roll.err_i += err_roll.err * 0.01f;
+    err_roll.err_d = p_state->droll;
+    if (err_roll.err_i > 400)
+        err_roll.err_i = 400;
+    else if (err_roll.err_i < -400)
+        err_roll.err_i = -400;
+
+    control = (int16_t)(err_pitch.err * pid_pitch.p +
+                        err_pitch.err_i * pid_pitch.i +
+                        err_pitch.err_d * pid_pitch.d +
+                        err_roll.err * pid_roll.p +
+                        err_roll.err_i * pid_roll.i +
+                        err_roll.err_d * pid_roll.d);
 
     if (control > 100)
     {
@@ -98,7 +122,7 @@ void control_signal_get(int8_t *control_r, int8_t *control_l, control_state_t *p
 
 void control_dirve_motors(int8_t control, control_channel_t ch)
 {
-    uint32_t pwm = (uint32_t)abs((int)((control / 100) * (int)MAX_CONTROL_PWM));
+    uint32_t pwm = (uint32_t)abs((int)((control / 100.f) * MAX_CONTROL_PWM));
 
     GPIO_TypeDef *gpio1 = ch == CONTROL_RIGHT_WHEEL ? Motor_R_direction1_GPIO_Port : Motor_L_direction1_GPIO_Port;
     GPIO_TypeDef *gpio2 = ch == CONTROL_RIGHT_WHEEL ? Motor_R_direction2_GPIO_Port : Motor_L_direction2_GPIO_Port;
@@ -123,6 +147,5 @@ void control_dirve_motors(int8_t control, control_channel_t ch)
         HAL_GPIO_WritePin(gpio1, pin1, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(gpio2, pin2, GPIO_PIN_RESET);
     }
-
     __HAL_TIM_SET_COMPARE(m_control_config.p_tim, ch, pwm);
 }

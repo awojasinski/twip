@@ -3,7 +3,7 @@
 #include "fir.h"
 
 #define MOVING_AVERAGE_SIZE 5
-#define MA_TO_RAD (100 * 2 * 3.1415f / IMPUSLES_PER_TURN) //rad/s
+#define MA_TO_RAD ((2 * 3.1415f) / (IMPUSLES_PER_TURN)*200) //rad/s
 
 static inline void overflow_underflow_handler(encoder_t *);
 
@@ -22,6 +22,8 @@ void encoder_init(TIM_HandleTypeDef *left_tim, TIM_HandleTypeDef *right_tim, uin
 
     encoder_left.tim = left_tim;
     encoder_right.tim = right_tim;
+
+    encoder_left.velo = 0;
 
     encoder_left.full_turn = -1;
     encoder_right.full_turn = 0;
@@ -66,10 +68,13 @@ float encoder_get_velo(encoder_t *hencoder)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    //static uint32_t time_elapsed_left, time_elapsed_right;
+    static uint32_t time_elapsed_left; //, time_elapsed_right;
     if (htim == encoder_left.tim)
     {
+        uint32_t timestamp = HAL_GetTick();
         overflow_underflow_handler((encoder_t *)&encoder_left);
+        encoder_left.velo = (1000 * 2 * 3.1415f) / (float)(timestamp - time_elapsed_left);
+        time_elapsed_left = timestamp;
     }
     else if (htim == encoder_right.tim)
     {

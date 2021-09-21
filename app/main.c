@@ -40,8 +40,8 @@ void main(void)
     mpu9250_init();
 
     control_state_set(0, 0, 0, 0, 0, 0);
-    control_pid_set(&pid_pitch, 5, 0, 0);
-    control_pid_set(&pid_roll, 0, 0, 0);
+    control_pid_set(&pid_pitch, 2.9f, 0, 0.0f);
+    control_pid_set(&pid_roll, 0.f, 0, 0.9f);
     control_init(&htim1, TIM_CHANNEL_1, TIM_CHANNEL_4);
 
     logger_init();
@@ -49,9 +49,8 @@ void main(void)
     HAL_TIM_Base_Start_IT(&htim4);
     while (1)
     {
-        cli_main();
+        //cli_main();
         logger_main();
-        //cli_printf("%7.2f", encoder_get_angle_deg(&encoder_left));
     }
 }
 
@@ -74,24 +73,26 @@ void TIM4_IRQHandler(void)
     log_data.angle_r = (int32_t)(angle_r * 128);
 
     // Calculate control
-    twip_state.pitch = inv_q16_to_float(log_data.euler[1]);
-    twip_state.roll = (angle_r + angle_l) / 2;
+    twip_state.pitch = (inv_q16_to_float(log_data.euler[1]));
+    twip_state.roll = ((angle_r + angle_l) / 2);
     twip_state.droll = (encoder_get_velo(&encoder_left) + encoder_get_velo(&encoder_right)) / 2;
 
-    //control_signal_get(&control, &control, &twip_state);
-    //control_dirve_motors(control, CONTROL_RIGHT_WHEEL);
-    //control_dirve_motors(control, CONTROL_LEFT_WHEEL);
+    control_signal_get(&control, &control, &twip_state);
+    if (twip_state.pitch > 30 || twip_state.pitch < -30)
+    {
+        control = 0;
+        control_errors_clear();
+    }
 
-    log_data.control = (int8_t)htim1.Instance->CCR1;
-    log_data.euler[0] = (long)(encoder_get_velo(&encoder_left) * 65536.f);
-    log_data.euler[1] = (long)(encoder_get_velo(&encoder_right) * 65536.f);
-    log_data.acc[0] = (int8_t)((htim1.Instance->CCR1 / htim1.Init.Period) * 100);
-    log_data.acc[1] = (int8_t)((htim1.Instance->CCR4 / htim1.Init.Period) * 100);
+    //cli_printf("%d", control);
+
+    control_dirve_motors(control, CONTROL_RIGHT_WHEEL);
+    control_dirve_motors(control, CONTROL_LEFT_WHEEL);
+
+    log_data.control = control;
     log_data.velocity = (long)(twip_state.droll * 65536.f);
-
     // Add to FIFO
     logger_write(&log_data);
     HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-
     HAL_TIM_IRQHandler(&htim4);
 }
