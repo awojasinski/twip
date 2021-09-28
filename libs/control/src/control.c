@@ -83,28 +83,17 @@ void control_signal_get(int8_t *control_r, int8_t *control_l, control_state_t *p
 {
     int16_t control;
     err_pitch.err = m_control_desc.theta + p_state->pitch;
-    err_pitch.err_i += err_pitch.err * 0.01f;
+
     err_pitch.err_d = -(p_state->pitch - err_pitch.last) / 0.01f;
     err_pitch.last = p_state->pitch;
 
-    if (err_pitch.err_i > 400)
-        err_pitch.err_i = 400;
-    else if (err_pitch.err_i < -400)
-        err_pitch.err_i = -400;
-
     err_roll.err = m_control_desc.phi + p_state->roll;
-    err_roll.err_i += err_roll.err * 0.01f;
+
     err_roll.err_d = p_state->droll;
-    if (err_roll.err_i > 400)
-        err_roll.err_i = 400;
-    else if (err_roll.err_i < -400)
-        err_roll.err_i = -400;
 
     control = (int16_t)(err_pitch.err * pid_pitch.p +
-                        err_pitch.err_i * pid_pitch.i +
                         err_pitch.err_d * pid_pitch.d +
                         err_roll.err * pid_roll.p +
-                        err_roll.err_i * pid_roll.i +
                         err_roll.err_d * pid_roll.d);
 
     if (control > 100)

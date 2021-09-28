@@ -11,13 +11,13 @@ typedef struct
     int32_t encoder_cnt_old;
     int32_t encoder_cnt_new;
     int16_t full_turn;
-    uint8_t wheel_r;
-    float velo;
+    float wheel_r; // m
+    float velo;    // rad/s
 } encoder_t;
 
 extern encoder_t encoder_right, encoder_left;
 
-void encoder_init(TIM_HandleTypeDef *, TIM_HandleTypeDef *, uint8_t);
+void encoder_init(TIM_HandleTypeDef *, TIM_HandleTypeDef *, float);
 float encoder_get_angle_deg(encoder_t *);
 float encoder_get_velo(encoder_t *);
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *);

@@ -3,7 +3,7 @@
 #include "fir.h"
 
 #define MOVING_AVERAGE_SIZE 5
-#define MA_TO_RAD ((2 * 3.1415f) / (IMPUSLES_PER_TURN)*200) //rad/s
+#define IMP2RAD ((2 * 3.1415f) / (IMPUSLES_PER_TURN)*200) //rad/s
 
 static inline void overflow_underflow_handler(encoder_t *);
 
@@ -14,7 +14,7 @@ int32_t l_velo_ma[MOVING_AVERAGE_SIZE];
 
 fir_ma_filter_t r_filter, l_filter;
 
-void encoder_init(TIM_HandleTypeDef *left_tim, TIM_HandleTypeDef *right_tim, uint8_t wheel_diameter_mm)
+void encoder_init(TIM_HandleTypeDef *left_tim, TIM_HandleTypeDef *right_tim, float wheel_diameter_m)
 {
     MX_TIM2_Init(); // encoder right motor
     MX_TIM3_Init(); // encoder left motor
@@ -28,8 +28,8 @@ void encoder_init(TIM_HandleTypeDef *left_tim, TIM_HandleTypeDef *right_tim, uin
     encoder_left.full_turn = -1;
     encoder_right.full_turn = 0;
 
-    encoder_left.wheel_r = wheel_diameter_mm;
-    encoder_right.wheel_r = wheel_diameter_mm;
+    encoder_left.wheel_r = wheel_diameter_m;
+    encoder_right.wheel_r = wheel_diameter_m;
 
     fir_ma_init(&r_filter, r_velo_ma, MOVING_AVERAGE_SIZE);
     fir_ma_init(&l_filter, l_velo_ma, MOVING_AVERAGE_SIZE);
@@ -54,11 +54,11 @@ float encoder_get_velo(encoder_t *hencoder)
 {
     if (hencoder == &encoder_left)
     {
-        return ((float)fir_ma_read(&l_filter) * MA_TO_RAD);
+        return ((float)fir_ma_read(&l_filter) * IMP2RAD);
     }
     else if (hencoder == &encoder_right)
     {
-        return ((float)fir_ma_read(&r_filter) * MA_TO_RAD);
+        return ((float)fir_ma_read(&r_filter) * IMP2RAD);
     }
     else
     {
@@ -68,17 +68,20 @@ float encoder_get_velo(encoder_t *hencoder)
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-    static uint32_t time_elapsed_left; //, time_elapsed_right;
+    static uint32_t time_elapsed_left, time_elapsed_right;
     if (htim == encoder_left.tim)
     {
         uint32_t timestamp = HAL_GetTick();
         overflow_underflow_handler((encoder_t *)&encoder_left);
-        encoder_left.velo = (1000 * 2 * 3.1415f) / (float)(timestamp - time_elapsed_left);
+        encoder_left.velo = (1000 * 2 * 3.1415f) / (float)(timestamp - time_elapsed_left); // rad/s
         time_elapsed_left = timestamp;
     }
     else if (htim == encoder_right.tim)
     {
+        uint32_t timestamp = HAL_GetTick();
         overflow_underflow_handler((encoder_t *)&encoder_right);
+        encoder_right.velo = (1000 * 2 * 3.1415f) / (float)(timestamp - time_elapsed_right); // rad/s
+        time_elapsed_right = timestamp;
     }
 }
 

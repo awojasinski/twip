@@ -10,10 +10,11 @@ typedef struct
 {
     long acc[3];
     long gyro[3];
-    long euler[3];
+    long euler;
     long angle_l;
     long angle_r;
-    long velocity;
+    long velo_l;
+    long velo_r;
     int8_t control;
 } log_t;
 
