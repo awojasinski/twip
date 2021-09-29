@@ -38,7 +38,7 @@
 
 #define PEDO_READ_MS (1000)
 #define TEMP_READ_MS (500)
-#define COMPASS_READ_MS (10)
+#define COMPASS_READ_MS (100)
 
 struct rx_s
 {
@@ -63,11 +63,18 @@ struct hal_s
 };
 
 /* Functions declatarion starts here */
-
 void mpu9250_init(void);
 
 void mpu9250_backend_init(void);
 void mpu9250_backend_config(unsigned short *features);
+
+bool is_mag_calibrated();
+bool is_acc_calibrated();
+bool is_gyro_calibrated();
+
+void read_gyro_calibration();
+void read_acc_calibration();
+void read_mag_calibration();
 
 void run_self_test(void);
 
