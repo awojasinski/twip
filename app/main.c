@@ -32,7 +32,7 @@ void main(void)
     MX_RTC_Init();
 
     MX_TIM1_Init(); // motor control ch1 left motor ch4 right motor
-    MX_TIM4_Init(); // control algorithm
+    //MX_TIM4_Init(); // control algorithm
 
     // uSD card
     MX_SPI1_Init();
@@ -41,23 +41,43 @@ void main(void)
     MX_I2C1_Init(); // IMU sensor
 
     cli_init();
+    cli_mute(true);
 
-    encoder_init(&htim3, &htim2, 0.4f);
-    mpu9250_init();
+    //encoder_init(&htim3, &htim2, 0.4f);
+    //mpu9250_init();
 
-    control_state_set(0, 0, 0, 0, 0, 0);
-    control_pid_set(&pid_pitch, 73.5f, 0, 0.0f);
-    control_pid_set(&pid_roll, 0.f, 0, 0.9f);
-    control_init(&htim1, TIM_CHANNEL_1, TIM_CHANNEL_4);
+    //control_state_set(0, 0, 0, 0, 0, 0);
+    //control_pid_set(&pid_pitch, 73.5f, 0, 0.0f);
+    //control_pid_set(&pid_roll, 0.f, 0, 0.9f);
+    //control_init(&htim1, TIM_CHANNEL_1, TIM_CHANNEL_4);
 
     //inv_get_sensor_type_gyroscope
     logger_init();
 
-    HAL_TIM_Base_Start_IT(&htim4);
+    //HAL_TIM_Base_Start_IT(&htim4);
+    cli_printf("This will sample the magnetometer for the next 15 seconds\n");
+    cli_printf("Rotate the board around in the air through as many orientations\n");
+    cli_printf("as possible to collect sufficient data for calibration\n");
+    cli_printf("Press any key to continue\n");
+    cli_getchar();
+
+    cli_printf("spin spin spin!!!\n\n");
+    // wait for the user to actually start
+    HAL_Delay(2000);
+
+    if (calibrate_mag() < 0)
+    {
+        cli_printf("Failed to complete magnetometer calibration\n");
+    }
+    else
+    {
+        cli_printf("Calibrated");
+    }
+
     while (1)
     {
         //cli_main();
-        logger_main();
+        //logger_main();
     }
 }
 

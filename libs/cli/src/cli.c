@@ -1,6 +1,6 @@
 #include <stdarg.h>
 #include <stdio.h>
-#include <string.h> 
+#include <string.h>
 
 #include "usart.h"
 #include "gpio.h"
@@ -19,21 +19,26 @@ static volatile bool cmd_analyze = false;
 
 uart_handler_t uart_dbg;
 
-void cli_mute(bool status){
+void cli_mute(bool status)
+{
   uart_show_recived_input(!status);
 }
 
-void cli_main() {
-    if (cmd_analyze) {
-        cmd_analyze = false;
-        if (strstr((const char*)&cli_rx_buffer, "twip")) {
-            cli_cmd_analyze((char *)&cli_rx_buffer);
-        }
-        cli_clear_buffer();
+void cli_main()
+{
+  if (cmd_analyze)
+  {
+    cmd_analyze = false;
+    if (strstr((const char *)&cli_rx_buffer, "twip"))
+    {
+      cli_cmd_analyze((char *)&cli_rx_buffer);
     }
+    cli_clear_buffer();
+  }
 }
 
-void cli_info() {
+void cli_info()
+{
   cli_clear_console();
   cli_color_console(TEXT_CYAN_LIGHT);
   cli_printf("++++++++++++++++++++++++++++++++");
@@ -44,76 +49,87 @@ void cli_info() {
   cli_color_console(TEXT_DEFAULT);
 }
 
-void cli_clear_console() {
+void cli_clear_console()
+{
   cli_printf_inline("%c[2J", 27);
   cli_printf_inline("%c[H", 27);
 }
 
-void cli_color_console(cli_text_color_t color) {
-  switch (color) {
-    case TEXT_DEFAULT :
-      cli_printf_inline("%s", ASCII_COLOR_DEFAULT);
-      break;
-    case TEXT_RED:
-      cli_printf_inline("%s", ASCII_COLOR_RED);
-      break;
-    case TEXT_RED_LIGHT:
-      cli_printf_inline("%s", ASCII_COLOR_RED_LIGHT);
-      break;
-    case TEXT_BLUE:
-      cli_printf_inline("%s", ASCII_COLOR_BLUE);
-      break;
-    case TEXT_BLUE_LIGHT:
-      cli_printf_inline("%s", ASCII_COLOR_BLUE_LIGHT);
-      break;
-    case TEXT_GREEN:
-      cli_printf_inline("%s", ASCII_COLOR_GREEN);
-      break;
-    case TEXT_GREEN_LIGHT:
-      cli_printf_inline("%s", ASCII_COLOR_GREEN_LIGHT);
-      break;
-    case TEXT_YELLOW:
-      cli_printf_inline("%s", ASCII_COLOR_YELLOW);
-      break;
-    case TEXT_YELLOW_LIGHT:
-      cli_printf_inline("%s", ASCII_COLOR_YELLOW_LIGHT);
-      break;
-    case TEXT_MAGENTA:
-      cli_printf_inline("%s", ASCII_COLOR_MAGENTA);
-      break;
-    case TEXT_MAGENTA_LIGHT:
-      cli_printf_inline("%s", ASCII_COLOR_MAGENTA_LIGHT);
-      break;
-    case TEXT_CYAN:
-      cli_printf_inline("%s", ASCII_COLOR_CYAN);
-      break;
-    case TEXT_CYAN_LIGHT:
-      cli_printf_inline("%s", ASCII_COLOR_CYAN_LIGHT);
-      break;
-    default:
-      break;
+void cli_color_console(cli_text_color_t color)
+{
+  switch (color)
+  {
+  case TEXT_DEFAULT:
+    cli_printf_inline("%s", ASCII_COLOR_DEFAULT);
+    break;
+  case TEXT_RED:
+    cli_printf_inline("%s", ASCII_COLOR_RED);
+    break;
+  case TEXT_RED_LIGHT:
+    cli_printf_inline("%s", ASCII_COLOR_RED_LIGHT);
+    break;
+  case TEXT_BLUE:
+    cli_printf_inline("%s", ASCII_COLOR_BLUE);
+    break;
+  case TEXT_BLUE_LIGHT:
+    cli_printf_inline("%s", ASCII_COLOR_BLUE_LIGHT);
+    break;
+  case TEXT_GREEN:
+    cli_printf_inline("%s", ASCII_COLOR_GREEN);
+    break;
+  case TEXT_GREEN_LIGHT:
+    cli_printf_inline("%s", ASCII_COLOR_GREEN_LIGHT);
+    break;
+  case TEXT_YELLOW:
+    cli_printf_inline("%s", ASCII_COLOR_YELLOW);
+    break;
+  case TEXT_YELLOW_LIGHT:
+    cli_printf_inline("%s", ASCII_COLOR_YELLOW_LIGHT);
+    break;
+  case TEXT_MAGENTA:
+    cli_printf_inline("%s", ASCII_COLOR_MAGENTA);
+    break;
+  case TEXT_MAGENTA_LIGHT:
+    cli_printf_inline("%s", ASCII_COLOR_MAGENTA_LIGHT);
+    break;
+  case TEXT_CYAN:
+    cli_printf_inline("%s", ASCII_COLOR_CYAN);
+    break;
+  case TEXT_CYAN_LIGHT:
+    cli_printf_inline("%s", ASCII_COLOR_CYAN_LIGHT);
+    break;
+  default:
+    break;
   }
 }
 
-void cli_cmd_analyze(char *buffer) {
+void cli_cmd_analyze(char *buffer)
+{
   cmd_error_t ret = CMD_UNSUPPORTED;
   uint8_t i = (uint8_t)strcspn(buffer, EOF_BYTE_SET);
   char *cmd = buffer + i + 1;
-  while (*cmd != '\0') {
-    for (uint8_t n=0; n<CLI_CMD_CALLBACKS_CNT; n++) {
-      if (strncmp(cmd, cmd_list[n].command, strlen(cmd_list[n].command)) == 0) {
+  while (*cmd != '\0')
+  {
+    for (uint8_t n = 0; n < CLI_CMD_CALLBACKS_CNT; n++)
+    {
+      if (strncmp(cmd, cmd_list[n].command, strlen(cmd_list[n].command)) == 0)
+      {
         ret = cmd_list[n].callback(cmd);
         break;
       }
       ret = CMD_UNSUPPORTED;
     }
-    if (ret == CMD_OK) {
+    if (ret == CMD_OK)
+    {
       break;
-    } else {
+    }
+    else
+    {
       cmd = cmd + 1 + strcspn(cmd, EOF_BYTE_SET);
     }
   }
-  switch (ret) {
+  switch (ret)
+  {
   case CMD_TOO_LONG:
     cli_printf("%sToo long command%s", ASCII_COLOR_RED_LIGHT, ASCII_COLOR_DEFAULT);
     break;
@@ -128,8 +144,10 @@ void cli_cmd_analyze(char *buffer) {
   }
 }
 
-void cli_printf(const char *str, ...) {
-  if (cli_status != CLI_ENABLED) {
+void cli_printf(const char *str, ...)
+{
+  if (cli_status != CLI_ENABLED)
+  {
     return;
   }
 
@@ -141,7 +159,8 @@ void cli_printf(const char *str, ...) {
   va_end(valist);
 }
 
-void cli_clear_line(uint8_t n) {
+void cli_clear_line(uint8_t n)
+{
   cli_printf_inline("%c[%dA", 27, n);
   cli_printf_inline("%c[0J", 27);
 }
@@ -160,45 +179,69 @@ void cli_printf_inline(const char *str, ...)
   va_end(valist);
 }
 
-void cli_rx_byte_handler(char data) {
+void cli_rx_byte_handler(char data)
+{
   cli_rx_buffer[rx_buffer_top] = data;
 
-  if (data == '\r') {
+  if (data == '\r')
+  {
     uart_send_cnt(&uart_dbg, "\n", 1);
-    cli_rx_buffer[rx_buffer_top+1] = '\0';
+    cli_rx_buffer[rx_buffer_top + 1] = '\0';
     cmd_analyze = true;
-  } else if (data == '\177') {
-    if (rx_buffer_top > 0) {
+  }
+  else if (data == '\177')
+  {
+    if (rx_buffer_top > 0)
+    {
       rx_buffer_top--;
     }
     cli_rx_buffer[rx_buffer_top] = '\0';
-  } else if (rx_buffer_top >= (CLI_BUFFER_SIZE-2)) {
+  }
+  else if (rx_buffer_top >= (CLI_BUFFER_SIZE - 2))
+  {
     rx_buffer_top = 0;
-  } else {
+  }
+  else
+  {
     rx_buffer_top++;
   }
 }
 
-void cli_clear_buffer(void) {
-  for (int16_t i=0; i<CLI_BUFFER_SIZE; i++) {
+void cli_clear_buffer(void)
+{
+  for (int16_t i = 0; i < CLI_BUFFER_SIZE; i++)
+  {
     cli_rx_buffer[i] = 0;
   }
   rx_buffer_top = 0;
 }
 
-void cli_delay(uint32_t delay_ms) {
+void cli_delay(uint32_t delay_ms)
+{
   uint32_t start_tick = HAL_GetTick();
-  while (HAL_GetTick() - start_tick < delay_ms) {
+  while (HAL_GetTick() - start_tick < delay_ms)
+  {
     cli_main();
   }
 }
 
-char cli_get_char(void) {
-  return rx_buffer_top <= 0 ? '\0' : cli_rx_buffer[rx_buffer_top-1];
+char cli_get_char(void)
+{
+  return rx_buffer_top <= 0 ? '\0' : cli_rx_buffer[rx_buffer_top - 1];
 }
 
-void USART2_IRQHandler(void) {
-  if (uart_dbg.huart->Instance == USART2) {
+void cli_getchar(void)
+{
+  do
+  {
+  } while (cli_get_char() == 0);
+  cli_clear_buffer();
+}
+
+void USART2_IRQHandler(void)
+{
+  if (uart_dbg.huart->Instance == USART2)
+  {
     uart_IRQ(&uart_dbg);
   }
 }
@@ -218,7 +261,7 @@ void cli_init()
   huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   if (HAL_UART_Init(&huart2) != HAL_OK)
   {
-    Error_Handler(__FILE__, __LINE__);;
+    Error_Handler(__FILE__, __LINE__);
   }
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};

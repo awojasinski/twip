@@ -68,13 +68,17 @@ void mpu9250_init(void);
 void mpu9250_backend_init(void);
 void mpu9250_backend_config(unsigned short *features);
 
-bool is_mag_calibrated();
-bool is_acc_calibrated();
-bool is_gyro_calibrated();
+bool is_mag_calibrated(void);
+bool is_acc_calibrated(void);
+bool is_gyro_calibrated(void);
 
-void read_gyro_calibration();
-void read_acc_calibration();
-void read_mag_calibration();
+void read_gyro_calibration(void);
+void read_acc_calibration(void);
+void read_mag_calibration(void);
+
+int calibrate_accel(void);
+int calibrate_gyro(void);
+int calibrate_mag(void);
 
 void run_self_test(void);
 

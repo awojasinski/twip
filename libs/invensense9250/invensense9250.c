@@ -11,6 +11,8 @@
 #include "vector.h"
 #include "matrix.h"
 #include "algebra.h"
+#include "mpu_defs.h"
+#include "algebra_common.h"
 
 #define SLV_ADDR 0x68
 
@@ -24,6 +26,7 @@ unsigned long sensor_timestamp;
 static unsigned long timestamp;
 
 static int was_last_steady = 0;
+static uint8_t bypass_en = 0;
 
 static double mag_factory_adjust[3];
 static double mag_offsets[3];
@@ -604,87 +607,142 @@ static int __load_gyro_calibration(void)
 
 static int __write_gyro_cal_to_disk(int16_t offsets[3])
 {
-    FIL *fd;
+    FIL fd;
     int ret;
 
-    if (f_open(fd, "gyro_cal.txt", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
+    if (f_open(&fd, "gyro_cal.txt", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
     {
         cli_printf("ERROR in opening gyro calibration file for writing");
         return -1;
     }
 
     // write to the file, close, and exit
-    if (f_printf(fd, "%d\n%d\n%d\n", offsets[0], offsets[1], offsets[2]) < 0)
+    char buff[256];
+    snprintf(buff, strlen(buff), "%d,%d,%d", offsets[0], offsets[1], offsets[2]);
+    cli_printf("%s", buff);
+    ret = f_write(&fd, buff, strlen(buff), NULL);
+    if (ret < 0)
     {
         cli_printf("ERROR in writing to file");
-        f_close(fd);
+        f_close(&fd);
         return -1;
     }
-    f_close(fd);
+    f_close(&fd);
     return 0;
 }
 
 static int __write_mag_cal_to_disk(double offsets[3], double scale[3])
 {
-    FIL *fd;
+    FIL fd;
     int ret;
+    char buff[256];
 
-    if (f_open(fd, "mag_cal.txt", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
+    if (f_open(&fd, "mag_cal.txt", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
     {
         cli_printf("ERROR in opening mag calibration file for writing");
         return -1;
     }
 
     // write to the file, close, and exit
-    ret = f_printf(fd, "%.10f,%.10f,%.10f,%.10f,%.10f,%.10f",
-                   offsets[0],
-                   offsets[1],
-                   offsets[2],
-                   scale[0],
-                   scale[1],
-                   scale[2]);
+    snprintf(buff,
+             strlen(buff),
+             "%.10f,%.10f,%.10f,%.10f,%.10f,%.10f",
+             offsets[0],
+             offsets[1],
+             offsets[2],
+             scale[0],
+             scale[1],
+             scale[2]);
+
+    ret = f_write(&fd, buff, strlen(buff), NULL);
     if (ret < 0)
     {
         cli_printf("ERROR in writing to file");
-        f_close(fd);
+        f_close(&fd);
         return -1;
     }
-    f_close(fd);
+    f_close(&fd);
     return 0;
 }
 
 static int __write_accel_cal_to_disk(double *center, double *lengths)
 {
-    FIL *fd;
+    FIL fd;
     int ret;
+    char buff[256];
 
-    if (f_open(fd, "acc_cal.txt", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
+    if (f_open(&fd, "acc_cal.txt", FA_WRITE | FA_CREATE_ALWAYS) != FR_OK)
     {
         cli_printf("ERROR in opening acc calibration file for writing");
         return -1;
     }
 
     // write to the file, close, and exit
-    ret = f_printf(fd, "%.10f,%.10f,%.10f,%.10f,%.10f,%.10f",
-                   center[0],
-                   center[1],
-                   center[2],
-                   lengths[0],
-                   lengths[1],
-                   lengths[2]);
+    snprintf(buff,
+             strlen(buff),
+             "%.10f,%.10f,%.10f,%.10f,%.10f,%.10f",
+             center[0],
+             center[1],
+             center[2],
+             lengths[0],
+             lengths[1],
+             lengths[2]);
+
+    ret = f_write(&fd, buff, strlen(buff), NULL);
     if (ret < 0)
     {
         perror("ERROR in writing to file\n");
-        f_close(fd);
+        f_close(&fd);
         return -1;
     }
-    f_close(fd);
+    f_close(&fd);
+    return 0;
+}
+
+int __mpu_set_bypass(uint8_t bypass_on)
+{
+    uint8_t tmp = 0;
+    uint8_t dmp_en;
+    mpu_get_dmp_state(&dmp_en);
+    if (dmp_en)
+    {
+        tmp |= FIFO_EN_BIT; // enable fifo for dsp mode
+    }
+    if (!bypass_on)
+    {
+        tmp |= I2C_MST_EN; // i2c master mode when not in bypass
+    }
+    if (Sensors_I2C_WriteRegister(SLV_ADDR, USER_CTRL, 1, &tmp))
+    {
+        cli_printf("ERROR in mpu_set_bypass, failed to write USER_CTRL register\n");
+        return -1;
+    }
+    HAL_Delay(3);
+    // INT_PIN_CFG settings
+    tmp = LATCH_INT_EN | INT_ANYRD_CLEAR | ACTL_ACTIVE_LOW; // latching
+    //tmp =  ACTL_ACTIVE_LOW;	// non-latching
+    if (bypass_on)
+        tmp |= BYPASS_EN;
+    if (Sensors_I2C_WriteRegister(SLV_ADDR, INT_PIN_CFG, 1, &tmp))
+    {
+        cli_printf("ERROR in mpu_set_bypass, failed to write INT_PIN_CFG register\n");
+        return -1;
+    }
+    if (bypass_on)
+    {
+        bypass_en = 1;
+    }
+    else
+    {
+        bypass_en = 0;
+    }
     return 0;
 }
 
 int __init_magnetometer(int cal_mode)
 {
     uint8_t raw[3]; // calibration data stored here
+    uint8_t data_send;
 
     // Enable i2c bypass to allow talking to magnetometer
     if (__mpu_set_bypass(1))
@@ -694,30 +752,26 @@ int __init_magnetometer(int cal_mode)
     }
     // magnetometer is actually a separate device with its
     // own address inside the mpu9250
-    if (i2c_set_device_address(config.i2c_bus, 1, AK8963_ADDR))
-    {
-        cli_printf("ERROR: in __init_magnetometer, failed to set i2c device address\n");
-        return -1;
-    }
     // Power down magnetometer
-    if (Sensors_I2C_WriteRegister(SLV_ADDR, AK8963_CNTL, 1, MAG_POWER_DN) < 0)
+    data_send = MAG_POWER_DN;
+    if (Sensors_I2C_WriteRegister(AK8963_ADDR, AK8963_CNTL, 1, &data_send) < 0)
     {
         cli_printf("ERROR: in __init_magnetometer, failed to write to AK8963_CNTL register to power down\n");
         return -1;
     }
     HAL_Delay(1);
     // Enter Fuse ROM access mode
-    if (Sensors_I2C_WriteRegister(SLV_ADDR, AK8963_CNTL, 1, MAG_FUSE_ROM))
+    data_send = MAG_FUSE_ROM;
+    if (Sensors_I2C_WriteRegister(AK8963_ADDR, AK8963_CNTL, 1, &data_send))
     {
         cli_printf("ERROR: in __init_magnetometer, failed to write to AK8963_CNTL register\n");
         return -1;
     }
     HAL_Delay(1);
     // Read the xyz sensitivity adjustment values
-    if (i2c_read_bytes(config.i2c_bus, AK8963_ASAX, 3, &raw[0]) < 0)
+    if (Sensors_I2C_ReadRegister(AK8963_ADDR, AK8963_ASAX, 3, &raw[0]) < 0)
     {
         cli_printf("failed to read magnetometer adjustment register\n");
-        i2c_set_device_address(config.i2c_bus, config.i2c_addr);
         //__mpu_set_bypass(0);
         return -1;
     }
@@ -726,7 +780,8 @@ int __init_magnetometer(int cal_mode)
     mag_factory_adjust[1] = (raw[1] - 128) / 256.0 + 1.0;
     mag_factory_adjust[2] = (raw[2] - 128) / 256.0 + 1.0;
     // Power down magnetometer again
-    if (Sensors_I2C_WriteRegister(SLV_ADDR, AK8963_CNTL, 1, MAG_POWER_DN))
+    data_send = MAG_POWER_DN;
+    if (Sensors_I2C_WriteRegister(AK8963_ADDR, AK8963_CNTL, 1, &data_send))
     {
         cli_printf("ERROR: in __init_magnetometer, failed to write to AK8963_CNTL register to power on\n");
         return -1;
@@ -735,14 +790,13 @@ int __init_magnetometer(int cal_mode)
     // Configure the magnetometer for 16 bit resolution
     // and continuous sampling mode 2 (100hz)
     uint8_t c = MSCALE_16 | MAG_CONT_MES_2;
-    if (Sensors_I2C_WriteRegister(SLV_ADDR, AK8963_CNTL, 1, &c))
+    if (Sensors_I2C_WriteRegister(AK8963_ADDR, AK8963_CNTL, 1, &c))
     {
         cli_printf("ERROR: in __init_magnetometer, failed to write to AK8963_CNTL register to set sampling mode\n");
         return -1;
     }
     HAL_Delay(1);
     // go back to configuring the IMU, leave bypass on
-    i2c_set_device_address(config.i2c_bus, config.i2c_addr);
     // load in magnetometer calibration
     if (!cal_mode)
     {
@@ -760,7 +814,7 @@ int mpu_read_mag(mpu_data_t *data)
     // don't worry about checking data ready bit, not worth thet time
     // read the data ready bit to see if there is new data
     uint8_t st1;
-    if (unlikely(i2c_read_byte(config.i2c_bus, AK8963_ST1, &st1) < 0))
+    if (unlikely(Sensors_I2C_ReadRegister(AK8963_ADDR, AK8963_ST1, 1, &st1) < 0))
     {
         cli_printf("ERROR reading Magnetometer, i2c_bypass is probably not set\n");
         return -1;
@@ -770,14 +824,11 @@ int mpu_read_mag(mpu_data_t *data)
 #endif
     if (!(st1 & MAG_DATA_READY))
     {
-        if (config.show_warnings)
-        {
-            cli_printf("no new magnetometer data ready, skipping read\n");
-        }
+        cli_printf("no new magnetometer data ready, skipping read\n");
         return 0;
     }
     // Read the six raw data regs into data array
-    if (unlikely(i2c_read_bytes(config.i2c_bus, AK8963_XOUT_L, 7, &raw[0]) < 0))
+    if (unlikely(Sensors_I2C_ReadRegister(AK8963_ADDR, AK8963_XOUT_L, 7, &raw[0]) < 0))
     {
         cli_printf("ERROR: mpu_read_mag failed to read data register\n");
         return -1;
@@ -786,10 +837,7 @@ int mpu_read_mag(mpu_data_t *data)
     // of a local field source, discard data if so
     if (raw[6] & MAGNETOMETER_SATURATION)
     {
-        if (config.show_warnings)
-        {
-            cli_printf("WARNING: magnetometer saturated, discarding data\n");
-        }
+        cli_printf("WARNING: magnetometer saturated, discarding data\n");
         return -1;
     }
     // Turn the MSB and LSB into a signed 16-bit value
@@ -958,18 +1006,18 @@ COLLECT_DATA:
         cli_printf("Gyro data out of bounds, put me down on a solid surface!\n");
         cli_printf("trying again\n");
         goto COLLECT_DATA;
+    }
 
 #ifdef DEBUG
-        cli_printf("offsets: %d %d %d\n", offsets[0], offsets[1], offsets[2]);
+    cli_printf("offsets: %d %d %d\n", offsets[0], offsets[1], offsets[2]);
 #endif
-        // write to disk
-        if (__write_gyro_cal_to_disk(offsets) < 0)
-        {
-            cli_printf("ERROR in calibrate_gyro_routine, failed to write to disk\n");
-            return -1;
-        }
-        return 0;
+    // write to disk
+    if (__write_gyro_cal_to_disk(offsets) < 0)
+    {
+        cli_printf("ERROR in calibrate_gyro_routine, failed to write to disk\n");
+        return -1;
     }
+    return 0;
 }
 
 int calibrate_mag(void)
@@ -985,6 +1033,11 @@ int calibrate_mag(void)
     vector_t center = vector_empty();
     vector_t lengths = vector_empty();
     mpu_data_t imu_data; // to collect magnetometer data
+    if (__reset_mpu() < 0)
+    {
+        cli_printf("ERROR: failed to reset MPU9250\n");
+        return -1;
+    }
 
     if (__init_magnetometer(1))
     {
@@ -1015,9 +1068,9 @@ int calibrate_mag(void)
             break;
         }
         // make sure the data is non-zero
-        if (abs(imu_data.mag[0]) < zero_tolerance &&
-            abs(imu_data.mag[1]) < zero_tolerance &&
-            abs(imu_data.mag[2]) < zero_tolerance)
+        if (fabs(imu_data.mag[0]) < zero_tolerance &&
+            fabs(imu_data.mag[1]) < zero_tolerance &&
+            fabs(imu_data.mag[2]) < zero_tolerance)
         {
             cli_printf("ERROR: retreived all zeros from magnetometer\n");
             break;
@@ -1042,8 +1095,8 @@ int calibrate_mag(void)
         HAL_Delay(loop_wait_us / 1000);
     }
 
-    cli_printf("\n\nOkay Stop!\n");
-    cli_printf("Calculating calibration constants.....\n");
+    cli_printf("\n\nOkay Stop!");
+    cli_printf("Calculating calibration constants..... ");
 
     // if data collection loop exited without getting enough data, warn the
     // user and return -1, otherwise keep going normally
@@ -1052,6 +1105,41 @@ int calibrate_mag(void)
         cli_printf("exiting calibrate_mag_routine without saving new data\n");
         return -1;
     }
+    FIL fd;
+    int ret;
+
+    ret = f_open(&fd, "mag_reads.txt", FA_WRITE | FA_CREATE_ALWAYS);
+    if (ret == FR_OK)
+    {
+        char buffer[256];
+        double x, y, z;
+
+        cli_printf("Writing magnetometer readings to mag_raeds.txt ...");
+        cli_printf("Samples %d", i);
+        for (int j = 0; j < i; j++)
+        {
+            x = A.d[j][0];
+            y = A.d[j][1];
+            z = A.d[j][2];
+
+            snprintf(&buffer[0], 256, "%.10f,%.10f,%.10f\n", x, y, z);
+            cli_printf(buffer);
+            ret = f_write(&fd, &buffer[0], strlen(buffer), NULL);
+            if (ret < 0)
+            {
+                cli_printf("Error writing to file");
+                f_close(&fd);
+                return -1;
+            }
+            HAL_Delay(200);
+        }
+        f_close(&fd);
+        matrix_free(&A);
+        cli_printf("Continue computation on PC");
+    }
+
+// Further data processing have to be done on PC due to lack of enought memory space
+#if 0
     // make empty vectors for ellipsoid fitting to populate
     if (algebra_fit_ellipsoid(A, &center, &lengths) < 0)
     {
@@ -1062,8 +1150,8 @@ int calibrate_mag(void)
     // empty memory, we are done with A
     matrix_free(&A);
     // do some sanity checks to make sure data is reasonable
-    if (abs(center.d[0]) > 200 || abs(center.d[1]) > 200 ||
-        abs(center.d[2]) > 200)
+    if (fabs(center.d[0]) > 200 || fabs(center.d[1]) > 200 ||
+        fabs(center.d[2]) > 200)
     {
         cli_printf("ERROR: center of fitted ellipsoid out of bounds\n");
         vector_free(&center);
@@ -1100,6 +1188,7 @@ int calibrate_mag(void)
     }
     vector_free(&center);
     vector_free(&lengths);
+#endif
     return 0;
 }
 
@@ -1128,12 +1217,12 @@ int __collect_accel_samples(int *avg_raw)
     data_send = 0x00;
     Sensors_I2C_WriteRegister(SLV_ADDR, MPU9250_FIFO_EN, 1, &data_send);
     // read FIFO sample count and log number of samples
-    Sensors_I2C_WriteRegister(SLV_ADDR, MPU9250_FIFO_COUNTH, 2, &data[0]);
+    Sensors_I2C_ReadRegister(SLV_ADDR, MPU9250_FIFO_COUNTH, 2, &data[0]);
     fifo_count = ((uint16_t)data[0] << 8) | data[1];
     samples = fifo_count / 6;
 
 #ifdef DEBUG
-    cli_printf("calibration samples: %d\n", samples);
+    cli_printf("calibration samples: %d\n", samples, fifo_count);
 #endif
 
     vector_alloc(&vx, samples);
@@ -1146,9 +1235,9 @@ int __collect_accel_samples(int *avg_raw)
     for (i = 0; i < samples; i++)
     {
         // read data for averaging
-        if (Sensors_I2C_WriteRegister(SLV_ADDR, MPU9250_FIFO_R_W, 6, data) < 0)
+        if (Sensors_I2C_ReadRegister(SLV_ADDR, MPU9250_FIFO_R_W, 6, data) < 0)
         {
-            cli_printf("ERROR in mpu_calibrate_accel_routine, failed to read FIFO\n");
+            cli_printf("ERROR in mpu_calibrate_accel_routine, failed to read FIFO");
             return -1;
         }
         x = (int16_t)(((int16_t)data[0] << 8) | data[1]);
@@ -1177,7 +1266,7 @@ int __collect_accel_samples(int *avg_raw)
     if (dev_x > ACCEL_CAL_THRESH || dev_y > ACCEL_CAL_THRESH || dev_z > ACCEL_CAL_THRESH)
     {
         was_last_steady = 0;
-        cli_printf("data too noisy, please hold me still\n");
+        cli_printf("data too noisy, please hold me still");
         return 1;
     }
     // this skips the first steady reading after a noisy reading
@@ -1207,7 +1296,7 @@ int calibrate_accel(void)
     // reset device, reset all registers
     if (__reset_mpu() < 0)
     {
-        cli_printf("ERROR in mpu_calibrate_accel_routine failed to reset MPU9250\n");
+        cli_printf("ERROR in mpu_calibrate_accel_routine failed to reset MPU9250");
         return -1;
     }
 
@@ -1237,9 +1326,9 @@ int calibrate_accel(void)
     Sensors_I2C_WriteRegister(SLV_ADDR, MPU9250_ACCEL_CONFIG, 1, &data_send); // set A FSR to 2G
 
     // collect an orientation
-    cli_printf("\nOrient Z pointing up and hold as still as possible\n");
-    cli_printf("When ready, press any key to sample accelerometer\n");
-    cli_get_char();
+    cli_printf("Orient Z pointing up and hold as still as possible");
+    cli_printf("When ready, press any key to sample accelerometer");
+    cli_getchar();
     ret = 1;
     was_last_steady = 0;
     while (ret)
@@ -1248,11 +1337,11 @@ int calibrate_accel(void)
         if (ret == -1)
             return -1;
     }
-    cli_printf("success\n");
+    cli_printf("success");
     // collect an orientation
-    cli_printf("\nOrient Z pointing down and hold as still as possible\n");
-    cli_printf("When ready, press any key to sample accelerometer\n");
-    cli_get_char();
+    cli_printf("Orient Z pointing down and hold as still as possible");
+    cli_printf("When ready, press any key to sample accelerometer");
+    cli_getchar();
     ret = 1;
     was_last_steady = 0;
     while (ret)
@@ -1261,11 +1350,11 @@ int calibrate_accel(void)
         if (ret == -1)
             return -1;
     }
-    cli_printf("success\n");
+    cli_printf("success");
     // collect an orientation
-    cli_printf("\nOrient X pointing up and hold as still as possible\n");
-    cli_printf("When ready, press any key to sample accelerometer\n");
-    cli_get_char();
+    cli_printf("Orient X pointing up and hold as still as possible");
+    cli_printf("When ready, press any key to sample accelerometer");
+    cli_getchar();
     ret = 1;
     was_last_steady = 0;
     while (ret)
@@ -1274,11 +1363,11 @@ int calibrate_accel(void)
         if (ret == -1)
             return -1;
     }
-    cli_printf("success\n");
+    cli_printf("success");
     // collect an orientation
-    cli_printf("\nOrient X pointing down and hold as still as possible\n");
-    cli_printf("When ready, press any key to sample accelerometer\n");
-    cli_get_char();
+    cli_printf("Orient X pointing down and hold as still as possible");
+    cli_printf("When ready, press any key to sample accelerometer");
+    cli_getchar();
     ret = 1;
     was_last_steady = 0;
     while (ret)
@@ -1287,11 +1376,11 @@ int calibrate_accel(void)
         if (ret == -1)
             return -1;
     }
-    cli_printf("success\n");
+    cli_printf("success");
     // collect an orientation
-    cli_printf("\nOrient Y pointing up and hold as still as possible\n");
-    cli_printf("When ready, press any key to sample accelerometer\n");
-    cli_get_char();
+    cli_printf("\nOrient Y pointing up and hold as still as possible");
+    cli_printf("When ready, press any key to sample accelerometer");
+    cli_getchar();
     ret = 1;
     was_last_steady = 0;
     while (ret)
@@ -1300,11 +1389,11 @@ int calibrate_accel(void)
         if (ret == -1)
             return -1;
     }
-    cli_printf("success\n");
+    cli_printf("success");
     // collect an orientation
-    cli_printf("\nOrient Y pointing down and hold as still as possible\n");
-    cli_printf("When ready, press any key to sample accelerometer\n");
-    cli_get_char();
+    cli_printf("\nOrient Y pointing down and hold as still as possible");
+    cli_printf("When ready, press any key to sample accelerometer");
+    cli_getchar();
     ret = 1;
     was_last_steady = 0;
     while (ret)
@@ -1313,7 +1402,7 @@ int calibrate_accel(void)
         if (ret == -1)
             return -1;
     }
-    cli_printf("success\n");
+    cli_printf("success");
 
     // fit the ellipse
     matrix_t A = matrix_empty();
@@ -1322,7 +1411,7 @@ int calibrate_accel(void)
 
     if (matrix_alloc(&A, 6, 3))
     {
-        cli_printf("ERROR: failed to alloc data matrix\n");
+        cli_printf("ERROR: failed to alloc data matrix");
         return -1;
     }
 
@@ -1338,7 +1427,7 @@ int calibrate_accel(void)
     // make empty vectors for ellipsoid fitting to populate
     if (algebra_fit_ellipsoid(A, &center, &lengths) < 0)
     {
-        cli_printf("failed to fit ellipsoid to magnetometer data\n");
+        cli_printf("failed to fit ellipsoid to magnetometer data");
         matrix_free(&A);
         return -1;
     }
@@ -1349,24 +1438,24 @@ int calibrate_accel(void)
     {
         if (fabs(center.d[i]) > 0.3)
         {
-            cli_printf("ERROR in mpu_calibrate_accel_routine, center of fitted ellipsoid out of bounds\n");
-            cli_printf("most likely the unit was held in incorrect orientation during data collection\n");
+            cli_printf("ERROR in mpu_calibrate_accel_routine, center of fitted ellipsoid out of bounds");
+            cli_printf("most likely the unit was held in incorrect orientation during data collection");
             vector_free(&center);
             vector_free(&lengths);
             return -1;
         }
         if (isnan(center.d[i]) || isnan(lengths.d[i]))
         {
-            cli_printf("ERROR in mpu_calibrate_accel_routine, data fitting produced NaN\n");
-            cli_printf("most likely the unit was held in incorrect orientation during data collection\n");
+            cli_printf("ERROR in mpu_calibrate_accel_routine, data fitting produced NaN");
+            cli_printf("most likely the unit was held in incorrect orientation during data collection");
             vector_free(&center);
             vector_free(&lengths);
             return -1;
         }
         if (lengths.d[i] > 1.3 || lengths.d[i] < 0.7)
         {
-            cli_printf("ERROR in mpu_calibrate_accel_routine, scale out of bounds\n");
-            cli_printf("most likely the unit was held in incorrect orientation during data collection\n");
+            cli_printf("ERROR in mpu_calibrate_accel_routine, scale out of bounds");
+            cli_printf("most likely the unit was held in incorrect orientation during data collection");
             vector_free(&center);
             vector_free(&lengths);
             return -1;
@@ -1384,7 +1473,7 @@ int calibrate_accel(void)
     // write to disk
     if (__write_accel_cal_to_disk(center.d, lengths.d) == -1)
     {
-        cli_printf("ERROR failed to write to disk\n");
+        cli_printf("ERROR failed to write to disk");
         return -1;
     }
     vector_free(&center);
