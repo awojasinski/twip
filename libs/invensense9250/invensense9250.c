@@ -14,6 +14,8 @@
 #include "mpu_defs.h"
 #include "algebra_common.h"
 
+#define DEBUG
+
 #define SLV_ADDR 0x68
 
 #define GYRO_CAL_THRESH 50   // std dev below which to consider still
@@ -123,7 +125,7 @@ static int __write_acc_cal_to_disk(double *, double *);
 
 static int __load_mag_calibration(void);
 static int __load_gyro_calibration(void);
-static int __load_acc_calibration(void);
+static int __load_accel_calibration(void);
 
 static int __reset_mpu(void);
 
@@ -147,17 +149,17 @@ void mpu9250_init(void)
             log_e("Could not initialize MPL.");
         }
         inv_enable_quaternion();
-        //inv_enable_9x_sensor_fusion();
+        inv_enable_9x_sensor_fusion();
 
-        inv_enable_fast_nomot();
+        //inv_enable_fast_nomot();
         inv_enable_gyro_tc();
 
-        inv_enable_in_use_auto_calibration();
+        //inv_enable_in_use_auto_calibration();
 
 #ifdef COMPASS_ENABLED
         /* Compass calibration algorithms. */
-        inv_enable_vector_compass_cal();
-        inv_enable_magnetic_disturbance();
+        //inv_enable_vector_compass_cal();
+        //inv_enable_magnetic_disturbance();
 #endif
         inv_enable_eMPL_outputs();
 
@@ -181,7 +183,7 @@ void mpu9250_init(void)
 #endif
         /* Push both gyro and accel data into the FIFO. */
         mpu_configure_fifo(INV_XYZ_GYRO | INV_XYZ_ACCEL);
-        mpu_set_sample_rate(100);
+        mpu_set_sample_rate(200);
 #ifdef COMPASS_ENABLED
         /* The compass sampling rate can be less than the gyro/accel sampling rate.
        * Use this function for proper power management.
@@ -190,7 +192,7 @@ void mpu9250_init(void)
 #endif
         /* Read back configuration in case it was set improperly. */
         mpu_set_accel_fsr(8);
-        mpu_set_gyro_fsr(1000);
+        mpu_set_gyro_fsr(2000);
 
         mpu_get_sample_rate(&gyro_rate);
         mpu_get_gyro_fsr(&gyro_fsr);
@@ -242,14 +244,9 @@ void mpu9250_init(void)
         mpu9250_backend_init();
 
         hal.dmp_features = DMP_FEATURE_6X_LP_QUAT |
+                           DMP_FEATURE_TAP |
                            DMP_FEATURE_SEND_RAW_ACCEL |
-                           DMP_FEATURE_SEND_CAL_GYRO |
-                           DMP_FEATURE_GYRO_CAL;
-        //long accel_bias[] = {-12124160, 17506304, 23789568};
-        //long gyro_bias[] = {1153116, -4075826, 1072953};
-
-        //inv_set_accel_bias(accel_bias, 2);
-        //inv_set_gyro_bias(gyro_bias, 2);
+                           DMP_FEATURE_SEND_CAL_GYRO;
 
         mpu9250_backend_config(&hal.dmp_features);
 
@@ -307,6 +304,13 @@ static inline void gyro_data_ready_cb(void)
         hal.next_temp_ms = timestamp + TEMP_READ_MS;
         new_temp = 1;
     }
+}
+
+void test_loading_calibration(void)
+{
+    __load_mag_calibration();
+    __load_gyro_calibration();
+    __load_accel_calibration();
 }
 
 void run_self_test(void)
@@ -413,12 +417,12 @@ static int __reset_mpu(void)
 
 static int __load_accel_calibration(void)
 {
-    FIL *fd;
+    FIL fd;
     uint8_t raw[6] = {0, 0, 0, 0, 0, 0};
     double x, y, z, sx, sy, sz; // offsets and scales in xyz
     int16_t bias[3], factory[3];
 
-    if (f_open(fd, "acc_cal.txt", FA_READ) != FR_OK)
+    if (f_open(&fd, "acc_cal.txt", FA_READ) != FR_OK)
     {
         // calibration file doesn't exist yet
         cli_printf("WARNING: no accelerometer calibration data founn");
@@ -429,9 +433,10 @@ static int __load_accel_calibration(void)
         return 0;
     }
     char buff[100];
-    f_gets(buff, 100, fd);
+    f_gets(buff, 100, &fd);
     // read in data
-    if (sscanf(buff, "%lf,%lf,%lf,%lf,%lf,%lf", &x, &y, &z, &sx, &sy, &sz) != 6)
+    int ret = sscanf(buff, "%lf,%lf,%lf,%lf,%lf,%lf\n", &x, &y, &z, &sx, &sy, &sz);
+    if (ret != 6)
     {
         cli_printf("ERROR loading accel offsets, calibration file empty or malformed");
         // use zero offsets
@@ -440,11 +445,11 @@ static int __load_accel_calibration(void)
         accel_lengths[2] = 1.0;
         return 0;
     }
-    f_close(fd);
+    f_close(&fd);
 
 #ifdef DEBUG
-    cli_printf("accel offsets: %lf %lf %lf\n", x, y, z);
-    cli_printf("accel scales:  %lf %lf %lf\n", sx, sy, sz);
+    cli_printf("accel offsets: %.10f %.10f %.10f\n", x, y, z);
+    cli_printf("accel scales:  %.10f %.10f %.10f\n", sx, sy, sz);
 #endif
 
     // save scales globally
@@ -505,10 +510,10 @@ static int __load_accel_calibration(void)
 
 static int __load_mag_calibration(void)
 {
-    FIL *fd;
+    FIL fd;
     double x, y, z, sx, sy, sz;
 
-    if (f_open(fd, "mag_cal.txt", FA_READ) != FR_OK)
+    if (f_open(&fd, "mag_cal.txt", FA_READ) != FR_OK)
     {
         // calibration file doesn't exist yet
         cli_printf("WARNING: no magnetometer calibration data found");
@@ -522,8 +527,9 @@ static int __load_mag_calibration(void)
     else
     { // read in data
         char buff[100];
-        f_gets(buff, 100, fd);
-        if (sscanf(buff, "%lf,%lf,%lf,%lf,%lf,%lf", &x, &y, &z, &sx, &sy, &sz) != 6)
+        f_gets(buff, 100, &fd);
+        int ret = sscanf(buff, "%lf,%lf,%lf,%lf,%lf,%lf", &x, &y, &z, &sx, &sy, &sz);
+        if (ret != 6)
         {
             cli_printf("ERROR loading magnetometer calibration file, empty or malformed");
             x = 0.0;
@@ -533,11 +539,11 @@ static int __load_mag_calibration(void)
             sy = 1.0;
             sz = 1.0;
         }
-        f_close(fd);
+        f_close(&fd);
     }
 
 #ifdef DEBUG
-    cli_printf("magcal: %lf %lf %lf %lf %lf %lf\n", x, y, z, sx, sy, sz);
+    cli_printf("magcal: %.10f %.10f %.10f %.10f %.10f %.10f\n", x, y, z, sx, sy, sz);
 #endif
 
     // write to global variables for use by mpu_read_mag
@@ -553,11 +559,11 @@ static int __load_mag_calibration(void)
 
 static int __load_gyro_calibration(void)
 {
-    FIL *fd;
+    FIL fd;
     uint8_t data[6];
     int x, y, z;
 
-    if (f_open(fd, "gyro_cal.txt", FA_READ) != FR_OK)
+    if (f_open(&fd, "gyro_cal.txt", FA_READ) != FR_OK)
     {
         // calibration file doesn't exist yet
         cli_printf("WARNING: no gyro calibration data found");
@@ -570,7 +576,7 @@ static int __load_gyro_calibration(void)
     {
         // read in data
         char buff[100];
-        f_gets(buff, 100, fd);
+        f_gets(buff, 100, &fd);
         if (sscanf(buff, "%d,%d,%d", &x, &y, &z) != 3)
         {
             cli_printf("ERROR loading gyro offsets, calibration file empty or malformed");
@@ -579,7 +585,7 @@ static int __load_gyro_calibration(void)
             y = 0;
             z = 0;
         }
-        f_close(fd);
+        f_close(&fd);
     }
 
 #ifdef DEBUG

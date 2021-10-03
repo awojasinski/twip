@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <other.h>
 
+#include "cli.h"
+
 // preposessor macros
 #define unlikely(x) __builtin_expect(!!(x), 0)
 

@@ -80,6 +80,8 @@ int calibrate_accel(void);
 int calibrate_gyro(void);
 int calibrate_mag(void);
 
+void test_loading_calibration(void);
+
 void run_self_test(void);
 
 void EXTI4_IRQHandler(void);

@@ -14,7 +14,7 @@ set(CMAKE_SIZE_UTIL    arm-none-eabi-size)
 
 
 set(COMMON_FLAGS "-mthumb -mcpu=${TARGET_CPU}")
-set(C_CXX_FLAGS  "--specs=nano.specs -ffunction-sections -fdata-sections -ffreestanding -mfloat-abi=hard -mfpu=fpv4-sp-d16 -u _printf_float")
+set(C_CXX_FLAGS  "-ffunction-sections -fdata-sections -ffreestanding -mfloat-abi=hard -mfpu=fpv4-sp-d16 -u _printf_float")
 set(CXX_FLAGS    "-fno-exceptions -fno-rtti -fno-threadsafe-statics")
 
 set(CMAKE_C_FLAGS_INIT          "${COMMON_FLAGS} ${C_CXX_FLAGS}"                        CACHE STRING "" FORCE)
