@@ -6,5 +6,20 @@
     "cmake.configureSettings": {},
     "C_Cpp.default.intelliSenseMode": "gcc-arm",
     "git.enableCommitSigning": true,
-    "python.formatting.provider": "yapf"
+    "python.formatting.provider": "yapf",
+    "files.associations": {
+        "cli.h": "c",
+        "invensense9250.h": "c",
+        "algebra_common.h": "c",
+        "kalman.h": "c",
+        "algebra.h": "c",
+        "vector.h": "c",
+        "matrix.h": "c",
+        "inv_mpu.h": "c",
+        "mpu.h": "c",
+        "other.h": "c",
+        "portme.h": "c",
+        "main.h": "c",
+        "mpu9250.h": "c"
+    }
 }

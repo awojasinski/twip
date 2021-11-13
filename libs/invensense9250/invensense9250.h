@@ -1,3 +1,6 @@
+#ifndef INVENSENSE_H
+#define INVENSENSE_H
+
 #include "inv_mpu.h"
 #include "inv_mpu_dmp_motion_driver.h"
 #include "invensense.h"
@@ -10,6 +13,11 @@
 
 #define log_i MPL_LOGI
 #define log_e MPL_LOGE
+
+#define DEG_TO_RAD 0.0174532925199 ///< multiply to convert degrees to radians
+#define RAD_TO_DEG 57.295779513    ///< multiply to convert radians to degrees
+#define MS2_TO_G 0.10197162129     ///< multiply to convert m/s^2 to G
+#define G_TO_MS2 9.80665           ///< multiply to convert G to m/s^2, standard gravity definition
 
 /* Private typedef -----------------------------------------------------------*/
 /* Data read from MPL. */
@@ -62,26 +70,19 @@ struct hal_s
     struct rx_s rx;
 };
 
+void invensense_interrupt_handler(void);
+int inv_set_callback(void (*func)(void));
+
 /* Functions declatarion starts here */
 void mpu9250_init(void);
 
 void mpu9250_backend_init(void);
 void mpu9250_backend_config(unsigned short *features);
 
-bool is_mag_calibrated(void);
-bool is_acc_calibrated(void);
-bool is_gyro_calibrated(void);
-
-void read_gyro_calibration(void);
-void read_acc_calibration(void);
-void read_mag_calibration(void);
-
 int calibrate_accel(void);
 int calibrate_gyro(void);
 int calibrate_mag(void);
 
-void test_loading_calibration(void);
-
 void run_self_test(void);
 
-void EXTI4_IRQHandler(void);
+#endif

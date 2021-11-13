@@ -11,17 +11,32 @@
 
 //#include "ina219.h"
 //#include "mpu9250.h"
+#include "MadgwickAHRS.h"
+#include "invensense9250.h"
 #include "cli.h"
 #include "control.h"
 #include "logger.h"
 #include "encoder.h"
-#include "invensense9250.h"
 
-#define DEG2RAD (3.14f / 180.f)
-#define RAD2DEG (180.f / 3.14f)
-#define G2MS (9.81)
+static inline void scan_i2c(uint32_t start_addr, uint32_t stop_addr);
 
-#define LIMIT_ANGLE (40 * DEG2RAD)
+#if defined(INVENSENSE_H) && defined(RC_MPU_H)
+#error "COMMENT OUT ONE OF LIBS"
+#endif
+
+#define SAMPLE_RATE_HZ 100 // main filter and control loop speed
+#define DT 0.01f           // 1/sample_rate
+
+#define LIMIT_ANGLE (40 * DEG_TO_RAD)
+
+void __balance_controller(void);
+
+#ifdef RC_MPU_H
+mpu_data_t mpu_data;
+mpu_config_t mpu_config;
+#endif
+
+control_pid_t control_tilt, control_roll;
 
 void main(void)
 {
@@ -32,100 +47,130 @@ void main(void)
     MX_RTC_Init();
 
     MX_TIM1_Init(); // motor control ch1 left motor ch4 right motor
-    //MX_TIM4_Init(); // control algorithm
 
     // uSD card
     MX_SPI1_Init();
     MX_FATFS_Init();
 
     MX_I2C1_Init(); // IMU sensor
-
     cli_init();
-    cli_mute(true);
 
-    //encoder_init(&htim3, &htim2, 0.4f);
-    //mpu9250_init();
-
-    //control_state_set(0, 0, 0, 0, 0, 0);
-    //control_pid_set(&pid_pitch, 73.5f, 0, 0.0f);
-    //control_pid_set(&pid_roll, 0.f, 0, 0.9f);
-    //control_init(&htim1, TIM_CHANNEL_1, TIM_CHANNEL_4);
-
-    //inv_get_sensor_type_gyroscope
     logger_init();
+    encoder_init(&htim3, &htim2, 0.4f);
 
-    //HAL_TIM_Base_Start_IT(&htim4);
-    cli_printf("This will sample the magnetometer for the next 15 seconds\n");
-    cli_printf("Rotate the board around in the air through as many orientations\n");
-    cli_printf("as possible to collect sufficient data for calibration\n");
-    cli_printf("Press any key to continue\n");
-    cli_getchar();
+    control_pid_set(&control_tilt, -250.5f, 0.0f, -150.5f, 4, DT);
+    control_enable_saturation(&control_tilt, -100.0f, 100.0f);
 
-    cli_printf("spin spin spin!!!\n\n");
-    // wait for the user to actually start
-    HAL_Delay(2000);
+    control_pid_set(&control_roll, 0.1f, 0.0f, 0.0f, 4, DT);
+    control_enable_saturation(&control_roll, -0.07f, 0.07f);
 
-    if (calibrate_mag() < 0)
-    {
-        cli_printf("Failed to complete magnetometer calibration\n");
-    }
-    else
-    {
-        cli_printf("Calibrated");
-    }
+    control_init(&htim1, TIM_CHANNEL_1, TIM_CHANNEL_4);
+#ifdef RC_MPU_H
+    mpu_config = mpu_default_config();
+    mpu_config.dmp_sample_rate = SAMPLE_RATE_HZ;
+    mpu_config.dmp_fetch_accel_gyro = 1;
+    mpu_config.orient = ORIENTATION_Z_UP;
 
+    mpu_initialize_dmp(&mpu_data, mpu_config);
+    mpu_set_dmp_callback(&__balance_controller);
+#endif
+#ifdef INVENSENSE_H
+    mpu9250_init();
+    inv_set_callback(&__balance_controller);
+#endif
+
+    HAL_NVIC_SetPriority(EXTI4_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(EXTI4_IRQn);
     while (1)
     {
-        //cli_main();
-        //logger_main();
+        // cli_main();
+        logger_main();
     }
 }
 
-void TIM4_IRQHandler(void)
+void __balance_controller(void)
 {
-    // Get measurements
     log_t log_data;
     int8_t control;
-    control_state_t twip_state;
+    float angle_l, angle_r, wheels_angle, tilt;
+
+#ifdef RC_MPU_H
+    // degrees in q16
+    log_data.euler = (long)(((float)mpu_data.dmp_TaitBryan[1] * RAD_TO_DEG) * (1 << 16));
+
+    // g's in q16
+    log_data.acc[0] = (long)(mpu_data.accel[0] / G_TO_MS2 * (1 << 16));
+    log_data.acc[1] = (long)(mpu_data.accel[1] / G_TO_MS2 * (1 << 16));
+    log_data.acc[2] = (long)(mpu_data.accel[2] / G_TO_MS2 * (1 << 16));
+
+    // degrees per secons in q16
+    log_data.gyro[0] = (long)(mpu_data.gyro[0] * (1 << 16));
+    log_data.gyro[1] = (long)(mpu_data.gyro[1] * (1 << 16));
+    log_data.gyro[2] = (long)(mpu_data.gyro[2] * (1 << 16));
+
+    MadgwickAHRSupdateIMU(mpu_data.accel[0], mpu_data.accel[1], mpu_data.accel[2],
+                          mpu_data.gyro[0], mpu_data.gyro[1], mpu_data.gyro[2]);
+#endif
+#ifdef INVENSENSE_H
     long euler[3];
-    float angle_l, angle_r;
+    float accel[3], gyro[3];
 
-    inv_get_accel(log_data.acc);
-    inv_get_gyro(log_data.gyro);
+    inv_get_sensor_type_accel(log_data.acc, NULL, NULL);
+    inv_get_sensor_type_gyro(log_data.gyro, NULL, NULL);
     inv_get_sensor_type_euler(euler, NULL, NULL);
-
-    log_data.euler = euler[1];
-
+#endif
     angle_l = encoder_get_angle_deg(&encoder_left);  // deg
     angle_r = encoder_get_angle_deg(&encoder_right); // deg
 
     // Wheel angle
-    log_data.angle_l = (int32_t)(angle_l * 128); // 1 deg = 2^8
-    log_data.angle_r = (int32_t)(angle_r * 128); // 1 deg = 2^8
+    log_data.angle_l = (int32_t)(angle_l * 128);
+    log_data.angle_r = (int32_t)(angle_r * 128);
 
-    // Calculate control
-    twip_state.pitch = (inv_q16_to_float(euler[1])) * DEG2RAD;
-    twip_state.dpitch = (inv_q16_to_float(log_data.gyro[1])) * DEG2RAD;
-    twip_state.roll = ((angle_r + angle_l) / 2) * DEG2RAD;
-    twip_state.droll = (encoder_get_velo(&encoder_left) + encoder_get_velo(&encoder_right)) / 2;
+    tilt = (((float)euler[1] / 65536.f)) * (float)DEG_TO_RAD + 0.03f;
+    wheels_angle = ((angle_r + angle_l) / 2.f) * (float)DEG_TO_RAD + tilt;
+
+    // Compute control
+    control = control_signal_get(&control_roll, 0 - wheels_angle);
+    control = control_signal_get(&control_tilt, 0 - control);
 
     // Limit control
-    control_signal_get(&control, &control, &twip_state);
-    if (twip_state.pitch > LIMIT_ANGLE || twip_state.pitch < -LIMIT_ANGLE)
+    if (tilt > LIMIT_ANGLE || tilt < -LIMIT_ANGLE)
     {
         control = 0;
-        control_errors_clear();
     }
 
     control_dirve_motors(control, CONTROL_RIGHT_WHEEL);
     control_dirve_motors(control, CONTROL_LEFT_WHEEL);
 
+    log_data.euler = (long)(tilt * 65536.f);
     log_data.control = control;
     log_data.velo_l = (long)(encoder_get_velo(&encoder_left) * 65536.f);
     log_data.velo_r = (long)(encoder_get_velo(&encoder_right) * 65536.f);
 
     // Add to FIFO
     logger_write(&log_data);
-    HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
-    HAL_TIM_IRQHandler(&htim4);
+}
+
+void EXTI4_IRQHandler(void)
+{
+#ifdef RC_MPU_H
+    mpu_interrupt_handler(&mpu_data, mpu_config);
+#endif
+#ifdef INVENSENSE_H
+    invensense_interrupt_handler();
+#endif
+
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
+}
+
+static inline void scan_i2c(uint32_t start_addr, uint32_t stop_addr)
+{
+    for (uint32_t i = start_addr; i <= stop_addr; i++)
+    {
+        uint32_t ret = HAL_I2C_IsDeviceReady(&hi2c1, (uint16_t)(i << 1), 5, 100);
+        if (ret == HAL_OK)
+        {
+            cli_printf("addr: 0x%03x ready", i);
+        }
+    }
 }

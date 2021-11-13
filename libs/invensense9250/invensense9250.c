@@ -6,6 +6,9 @@
 #include "cli.h"
 #include "invensense9250.h"
 #include "app_fatfs.h"
+#include "encoder.h"
+#include "logger.h"
+#include "control.h"
 
 #include "regs.h"
 #include "vector.h"
@@ -22,6 +25,14 @@
 #define ACCEL_CAL_THRESH 100 // std dev below which to consider still
 #define GYRO_OFFSET_THRESH 500
 
+#define QUAT_ERROR_THRESH (1L << 16) // very precise threshold
+#define QUAT_MAG_SQ_NORMALIZED (1L << 28)
+#define QUAT_MAG_SQ_MIN (QUAT_MAG_SQ_NORMALIZED - QUAT_ERROR_THRESH)
+#define QUAT_MAG_SQ_MAX (QUAT_MAG_SQ_NORMALIZED + QUAT_ERROR_THRESH)
+#define FIFO_LEN_QUAT_TAP 20            // 16 for quat, 4 for tap
+#define FIFO_LEN_QUAT_ACCEL_GYRO_TAP 32 // 16 quat, 6 accel, 6 gyro, 4 tap
+#define MAX_FIFO_BUFFER (FIFO_LEN_QUAT_ACCEL_GYRO_TAP * 5)
+
 unsigned char accel_fsr, new_temp = 0;
 unsigned short gyro_rate, gyro_fsr;
 unsigned long sensor_timestamp;
@@ -34,6 +45,8 @@ static double mag_factory_adjust[3];
 static double mag_offsets[3];
 static double mag_scales[3];
 static double accel_lengths[3];
+
+void (*callback_func)(void) = NULL;
 
 static struct hal_s hal = {0};
 
@@ -97,7 +110,19 @@ static struct platform_data_s gyro_pdata = {
 static struct platform_data_s compass_pdata = {
     .orientation = {0, 1, 0,
                     1, 0, 0,
+                    0, 0, 1}};
+/*
+static struct platform_data_s gyro_pdata = {
+    .orientation = {0, -1, 0,
+                    1, 0, 0,
+                    0, 0, 1}};
+
+#if defined MPU9150 || defined MPU9250
+static struct platform_data_s compass_pdata = {
+    .orientation = {1, 0, 0,
+                    0, -1, 0,
                     0, 0, -1}};
+*/
 #define COMPASS_ENABLED 1
 #elif defined AK8975_SECONDARY
 static struct platform_data_s compass_pdata = {
@@ -119,6 +144,8 @@ unsigned char new_compass = 0;
 unsigned long compass_timestamp;
 #endif
 
+static mpu_data_t mpu_data;
+
 static int __write_gyro_cal_to_disk(int16_t *);
 static int __write_mag_cal_to_disk(double *, double *);
 static int __write_acc_cal_to_disk(double *, double *);
@@ -128,6 +155,10 @@ static int __load_gyro_calibration(void);
 static int __load_accel_calibration(void);
 
 static int __reset_mpu(void);
+int __mpu_set_bypass(uint8_t);
+int __power_off_magnetometer(void);
+int __set_gyro_dlpf(unsigned short);
+int __set_accel_dlpf(unsigned short);
 
 void mpu9250_init(void)
 {
@@ -149,17 +180,16 @@ void mpu9250_init(void)
             log_e("Could not initialize MPL.");
         }
         inv_enable_quaternion();
-        inv_enable_9x_sensor_fusion();
+        // inv_enable_9x_sensor_fusion();
 
-        //inv_enable_fast_nomot();
-        inv_enable_gyro_tc();
-
-        //inv_enable_in_use_auto_calibration();
+        // inv_enable_fast_nomot();
+        // inv_enable_gyro_tc();
+        // inv_enable_in_use_auto_calibration();
 
 #ifdef COMPASS_ENABLED
         /* Compass calibration algorithms. */
-        //inv_enable_vector_compass_cal();
-        //inv_enable_magnetic_disturbance();
+        inv_enable_vector_compass_cal();
+        inv_enable_magnetic_disturbance();
 #endif
         inv_enable_eMPL_outputs();
 
@@ -186,8 +216,8 @@ void mpu9250_init(void)
         mpu_set_sample_rate(200);
 #ifdef COMPASS_ENABLED
         /* The compass sampling rate can be less than the gyro/accel sampling rate.
-       * Use this function for proper power management.
-       */
+         * Use this function for proper power management.
+         */
         mpu_set_compass_sample_rate(1000 / COMPASS_READ_MS);
 #endif
         /* Read back configuration in case it was set improperly. */
@@ -197,10 +227,14 @@ void mpu9250_init(void)
         mpu_get_sample_rate(&gyro_rate);
         mpu_get_gyro_fsr(&gyro_fsr);
         mpu_get_accel_fsr(&accel_fsr);
-        mpu_set_lpf(48);
+        mpu_set_lpf(98);
 #ifdef COMPASS_ENABLED
         mpu_get_compass_fsr(&compass_fsr);
 #endif
+        __load_accel_calibration();
+        __load_gyro_calibration();
+        //__load_mag_calibration();
+
         /* Sync driver configuration with MPL. */
         /* Sample rate expected in microseconds. */
         inv_set_gyro_sample_rate(1000000L / gyro_rate);
@@ -208,14 +242,14 @@ void mpu9250_init(void)
         inv_set_quat_sample_rate(1000000L / gyro_rate);
 #ifdef COMPASS_ENABLED
         /* The compass rate is independent of the gyro and accel rates. As long as
-     * inv_set_compass_sample_rate is called with the correct value, the 9-axis
-     * fusion algorithm's compass correction gain will work properly.
-     */
+         * inv_set_compass_sample_rate is called with the correct value, the 9-axis
+         * fusion algorithm's compass correction gain will work properly.
+         */
         inv_set_compass_sample_rate(COMPASS_READ_MS * 1000L);
 #endif
         /* Set chip-to-body orientation matrix.
-     * Set hardware units to dps/g's/degrees scaling factor.
-     */
+         * Set hardware units to dps/g's/degrees scaling factor.
+         */
         inv_set_gyro_orientation_and_scale(
             inv_orientation_matrix_to_scalar(gyro_pdata.orientation),
             (long)gyro_fsr << 15);
@@ -246,7 +280,7 @@ void mpu9250_init(void)
         hal.dmp_features = DMP_FEATURE_6X_LP_QUAT |
                            DMP_FEATURE_TAP |
                            DMP_FEATURE_SEND_RAW_ACCEL |
-                           DMP_FEATURE_SEND_CAL_GYRO;
+                           DMP_FEATURE_SEND_RAW_GYRO;
 
         mpu9250_backend_config(&hal.dmp_features);
 
@@ -277,7 +311,7 @@ void mpu9250_backend_config(unsigned short *features)
     dmp_enable_feature(hal.dmp_features);
     dmp_set_fifo_rate(100);
     mpu_set_dmp_state(1);
-    //dmp_set_interrupt_mode(DMP_INT_CONTINUOUS);
+    dmp_set_interrupt_mode(DMP_INT_CONTINUOUS);
     hal.dmp_on = 1;
 }
 
@@ -297,8 +331,8 @@ static inline void gyro_data_ready_cb(void)
     }
 #endif
     /* Temperature data doesn't need to be read with every gyro sample.
-	           * Let's make them timer-based like the compass reads.
-	           */
+     * Let's make them timer-based like the compass reads.
+     */
     if (timestamp > hal.next_temp_ms)
     {
         hal.next_temp_ms = timestamp + TEMP_READ_MS;
@@ -306,11 +340,76 @@ static inline void gyro_data_ready_cb(void)
     }
 }
 
-void test_loading_calibration(void)
+int __set_accel_dlpf(unsigned short dlpf)
 {
-    __load_mag_calibration();
-    __load_gyro_calibration();
-    __load_accel_calibration();
+    uint8_t c = ACCEL_FCHOICE_1KHZ | BIT_FIFO_SIZE_1024;
+    switch (dlpf)
+    {
+    case 0:
+        c = ACCEL_FCHOICE_4KHZ | BIT_FIFO_SIZE_1024;
+        break;
+    case 460:
+        c |= 0;
+        break;
+    case 184:
+        c |= 1;
+        break;
+    case 92:
+        c |= 2;
+        break;
+    case 41:
+        c |= 3;
+        break;
+    case 20:
+        c |= 4;
+        break;
+    case 10:
+        c |= 5;
+        break;
+    case 5:
+        c |= 6;
+        break;
+    default:
+        fprintf(stderr, "invalid config.accel_dlpf\n");
+        return -1;
+    }
+    return Sensors_I2C_WriteRegister(SLV_ADDR, ACCEL_CONFIG_2, 1, &c);
+}
+
+int __set_gyro_dlpf(unsigned short dlpf)
+{
+    uint8_t c = FIFO_MODE_REPLACE_OLD;
+    switch (dlpf)
+    {
+    case 0:
+        c |= 7; // not really off, but 3600Hz bandwith
+        break;
+    case 250:
+        c |= 0;
+        break;
+    case 184:
+        c |= 1;
+        break;
+    case 92:
+        c |= 2;
+        break;
+    case 41:
+        c |= 3;
+        break;
+    case 20:
+        c |= 4;
+        break;
+    case 10:
+        c |= 5;
+        break;
+    case 5:
+        c |= 6;
+        break;
+    default:
+        fprintf(stderr, "invalid gyro_dlpf\n");
+        return -1;
+    }
+    return Sensors_I2C_WriteRegister(SLV_ADDR, CONFIG, 1, &c);
 }
 
 void run_self_test(void)
@@ -345,8 +444,8 @@ void run_self_test(void)
 
         for (i = 0; i < 3; i++)
         {
-            gyro[i] = (long)(gyro[i] * 32.8f); //convert to +-1000dps
-            accel[i] *= 2048.f;                //convert to +-16G
+            gyro[i] = (long)(gyro[i] * 32.8f); // convert to +-1000dps
+            accel[i] *= 2048.f;                // convert to +-16G
             accel[i] = accel[i] >> 16;
             gyro[i] = (long)(gyro[i] >> 16);
         }
@@ -362,8 +461,8 @@ void run_self_test(void)
         /* Push the calibrated data to the MPL library.
          *
          * MPL expects biases in hardware units << 16, but self test returns
-		 * biases in g's << 16.
-		 */
+         * biases in g's << 16.
+         */
         unsigned short accel_sens;
         float gyro_sens;
 
@@ -422,6 +521,7 @@ static int __load_accel_calibration(void)
     double x, y, z, sx, sy, sz; // offsets and scales in xyz
     int16_t bias[3], factory[3];
 
+#if 0
     if (f_open(&fd, "acc_cal.txt", FA_READ) != FR_OK)
     {
         // calibration file doesn't exist yet
@@ -446,10 +546,19 @@ static int __load_accel_calibration(void)
         return 0;
     }
     f_close(&fd);
+#endif
+    x = -0.0134109980;
+    y = 0.0342487638;
+    z = 0.0405581091;
+    sx = 1.0029470178;
+    sy = 1.0019523542;
+    sz = 1.0094;
 
 #ifdef DEBUG
-    cli_printf("accel offsets: %.10f %.10f %.10f\n", x, y, z);
-    cli_printf("accel scales:  %.10f %.10f %.10f\n", sx, sy, sz);
+    cli_color_console(TEXT_GREEN_LIGHT);
+    cli_printf("accel offsets: %.10f %.10f %.10f", x, y, z);
+    cli_printf("accel scales:  %.10f %.10f %.10f", sx, sy, sz);
+    cli_color_console(TEXT_DEFAULT);
 #endif
 
     // save scales globally
@@ -513,6 +622,7 @@ static int __load_mag_calibration(void)
     FIL fd;
     double x, y, z, sx, sy, sz;
 
+#if 0
     if (f_open(&fd, "mag_cal.txt", FA_READ) != FR_OK)
     {
         // calibration file doesn't exist yet
@@ -541,9 +651,17 @@ static int __load_mag_calibration(void)
         }
         f_close(&fd);
     }
-
+#endif
+    x = -3.6674864395;
+    y = 7.9493591673;
+    z = -8.2017789595;
+    sx = 1.5629583811;
+    sy = 1.6058167227;
+    sz = 1.6335288645;
 #ifdef DEBUG
-    cli_printf("magcal: %.10f %.10f %.10f %.10f %.10f %.10f\n", x, y, z, sx, sy, sz);
+    cli_color_console(TEXT_GREEN_LIGHT);
+    cli_printf("magcal: %.10f %.10f %.10f %.10f %.10f %.10f", x, y, z, sx, sy, sz);
+    cli_color_console(TEXT_DEFAULT);
 #endif
 
     // write to global variables for use by mpu_read_mag
@@ -562,7 +680,7 @@ static int __load_gyro_calibration(void)
     FIL fd;
     uint8_t data[6];
     int x, y, z;
-
+#if 0
     if (f_open(&fd, "gyro_cal.txt", FA_READ) != FR_OK)
     {
         // calibration file doesn't exist yet
@@ -587,9 +705,15 @@ static int __load_gyro_calibration(void)
         }
         f_close(&fd);
     }
+#endif
+    x = 55;
+    y = -245;
+    z = 120;
 
 #ifdef DEBUG
-    cli_printf("offsets: %d %d %d\n", x, y, z);
+    cli_color_console(TEXT_GREEN_LIGHT);
+    cli_printf("offsets: %d %d %d", x, y, z);
+    cli_color_console(TEXT_DEFAULT);
 #endif
 
     // Divide by 4 to get 32.9 LSB per deg/s to conform to expected bias input
@@ -726,7 +850,7 @@ int __mpu_set_bypass(uint8_t bypass_on)
     HAL_Delay(3);
     // INT_PIN_CFG settings
     tmp = LATCH_INT_EN | INT_ANYRD_CLEAR | ACTL_ACTIVE_LOW; // latching
-    //tmp =  ACTL_ACTIVE_LOW;	// non-latching
+    // tmp =  ACTL_ACTIVE_LOW;	// non-latching
     if (bypass_on)
         tmp |= BYPASS_EN;
     if (Sensors_I2C_WriteRegister(SLV_ADDR, INT_PIN_CFG, 1, &tmp))
@@ -741,6 +865,23 @@ int __mpu_set_bypass(uint8_t bypass_on)
     else
     {
         bypass_en = 0;
+    }
+    return 0;
+}
+
+int __power_off_magnetometer(void)
+{
+    if (__mpu_set_bypass(1))
+    {
+        cli_printf("failed to set mpu9250 into bypass i2c mode\n");
+        return -1;
+    }
+    // Power down magnetometer
+    uint8_t data = MAG_POWER_DN;
+    if (Sensors_I2C_WriteRegister(AK8963_ADDR, AK8963_CNTL, 1, &data) < 0)
+    {
+        fprintf(stderr, "failed to write to magnetometer\n");
+        return -1;
     }
     return 0;
 }
@@ -811,7 +952,7 @@ int __init_magnetometer(int cal_mode)
     return 0;
 }
 
-int mpu_read_mag(mpu_data_t *data)
+int inv_mpu_read_mag(mpu_data_t *data)
 {
     uint8_t raw[7];
     int16_t adc[3];
@@ -1068,7 +1209,7 @@ int calibrate_mag(void)
     i = 0;
     while (i < samples)
     {
-        if (mpu_read_mag(&imu_data) < 0)
+        if (inv_mpu_read_mag(&imu_data) < 0)
         {
             cli_printf("ERROR: failed to read magnetometer\n");
             break;
@@ -1442,6 +1583,7 @@ int calibrate_accel(void)
     // do some sanity checks to make sure data is reasonable
     for (i = 0; i < 3; i++)
     {
+        cli_printf("center[%d]=%f", i, center.d[i]);
         if (fabs(center.d[i]) > 0.3)
         {
             cli_printf("ERROR in mpu_calibrate_accel_routine, center of fitted ellipsoid out of bounds");
@@ -1487,7 +1629,7 @@ int calibrate_accel(void)
     return 0;
 }
 
-void EXTI4_IRQHandler(void)
+void invensense_interrupt_handler(void)
 {
     gyro_data_ready_cb();
     if (hal.new_gyro && hal.dmp_on)
@@ -1503,12 +1645,13 @@ void EXTI4_IRQHandler(void)
         }
         if (sensors & INV_XYZ_GYRO)
         {
-            inv_build_gyro(gyro, sensor_timestamp);
+            inv_build_gyro(gyro, sensor_timestamp * 1000);
             if (new_temp)
             {
                 new_temp = 0;
-                mpu_get_temperature(&temperature, &sensor_timestamp);
-                inv_build_temp(temperature, sensor_timestamp);
+                unsigned long temp_timestamp;
+                mpu_get_temperature(&temperature, &temp_timestamp);
+                inv_build_temp(temperature, temp_timestamp * 1000);
             }
         }
         if (sensors & INV_XYZ_ACCEL)
@@ -1516,11 +1659,11 @@ void EXTI4_IRQHandler(void)
             accel[0] = (long)accel_short[0];
             accel[1] = (long)accel_short[1];
             accel[2] = (long)accel_short[2];
-            inv_build_accel(accel, 3, sensor_timestamp);
+            inv_build_accel(accel, 3, sensor_timestamp * 1000);
         }
         if (sensors & INV_WXYZ_QUAT)
         {
-            inv_build_quat(quat, 9, sensor_timestamp);
+            inv_build_quat(quat, 9, sensor_timestamp * 1000);
         }
     }
 
@@ -1540,5 +1683,17 @@ void EXTI4_IRQHandler(void)
     }
 #endif
     inv_execute_on_data();
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
+    if (callback_func != NULL)
+        callback_func();
+}
+
+int inv_set_callback(void (*func)(void))
+{
+    if (func == NULL)
+    {
+        cli_printf("ERROR: trying to assign NULL pointer to callback_func\n");
+        return -1;
+    }
+    callback_func = func;
+    return 0;
 }

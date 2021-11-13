@@ -1,22 +1,22 @@
-file(GLOB_RECURSE MPU9250_HEADERS CONFIGURE_DEPENDS
+file(GLOB_RECURSE MADGWICK_HEADERS CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/inc/*.h
 )
 
-file(GLOB_RECURSE MPU9250_SOURCES CONFIGURE_DEPENDS
+file(GLOB_RECURSE MADGWICK_SOURCES CONFIGURE_DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
     ${CMAKE_CURRENT_SOURCE_DIR}/src/*.s
 )
 
-add_library(mpu9250 STATIC)
+add_library(madgwick STATIC)
 
-set_target_properties(mpu9250
+set_target_properties(madgwick
     PROPERTIES
         C_STANDARD 11
         C_EXTENSIONS ON
         CMAKE_C_STANDARD_REQUIRED ON
 )
 
-target_compile_options(mpu9250
+target_compile_options(madgwick
     PRIVATE
         #-Wall
         -Wextra
@@ -33,22 +33,21 @@ target_compile_options(mpu9250
         #-Wsign-conversion
 )
 
-target_include_directories(mpu9250
+target_include_directories(madgwick
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/inc
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(mpu9250
+target_link_libraries(madgwick
     PRIVATE
         hal
-        cli
 )
 
-target_sources(mpu9250
+target_sources(madgwick
     PUBLIC
-        ${MPU9250_HEADERS}
+        ${MADGWICK_HEADERS}
     PRIVATE
-        ${MPU9250_SOURCES}
+        ${MADGWICK_SOURCES}
 )

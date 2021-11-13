@@ -56,6 +56,7 @@ extern "C"
   /* USER CODE BEGIN EFP */
   void Error_Handler(char *, int);
   void SystemClock_Config(void);
+  void EXTI4_IRQHandler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

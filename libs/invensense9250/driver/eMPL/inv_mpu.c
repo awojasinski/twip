@@ -159,6 +159,8 @@ static inline int reg_int_cb(struct int_param_s *int_param)
 #endif /* #if defined AK8975_SECONDARY */
 #endif /* #if defined MPU9150 */
 
+#undef AK8963_SECONDARY
+
 #if defined AK8975_SECONDARY || defined AK8963_SECONDARY
 #define AK89xx_SECONDARY
 #else
@@ -634,6 +636,7 @@ static struct gyro_state_s st = {
     .h_i2c = &hi2c1,
     .reg = &reg,
     .hw = &hw,
+    .chip_cfg = {.sensors = 0xFF},
     .test = &test};
 #endif
 
@@ -1269,8 +1272,8 @@ int mpu_set_gyro_fsr(unsigned short fsr)
 {
     unsigned char data;
 
-    if (!(st.chip_cfg.sensors))
-        return -1;
+    //if (!(st.chip_cfg.sensors))
+    //    return -1;
 
     switch (fsr)
     {
@@ -1336,8 +1339,8 @@ int mpu_set_accel_fsr(unsigned char fsr)
 {
     unsigned char data;
 
-    if (!(st.chip_cfg.sensors))
-        return -1;
+    //if (!(st.chip_cfg.sensors))
+    //    return -1;
 
     switch (fsr)
     {
@@ -1459,45 +1462,45 @@ int mpu_set_sample_rate(unsigned short rate)
 {
     unsigned char data;
 
-    if (!(st.chip_cfg.sensors))
-        return -1;
+    //if (!(st.chip_cfg.sensors))
+    //    return -1;
 
-    if (st.chip_cfg.dmp_on)
-        return -1;
-    else
+    //if (st.chip_cfg.dmp_on)
+    //    return -1;
+    //else
+    //{
+    if (st.chip_cfg.lp_accel_mode)
     {
-        if (st.chip_cfg.lp_accel_mode)
+        if (rate && (rate <= 40))
         {
-            if (rate && (rate <= 40))
-            {
-                /* Just stay in low-power accel mode. */
-                mpu_lp_accel_mode(rate);
-                return 0;
-            }
-            /* Requested rate exceeds the allowed frequencies in LP accel mode,
+            /* Just stay in low-power accel mode. */
+            mpu_lp_accel_mode(rate);
+            return 0;
+        }
+        /* Requested rate exceeds the allowed frequencies in LP accel mode,
              * switch back to full-power mode.
              */
-            mpu_lp_accel_mode(0);
-        }
-        if (rate < 4)
-            rate = 4;
-        else if (rate > 1000)
-            rate = 1000;
+        mpu_lp_accel_mode(0);
+    }
+    if (rate < 4)
+        rate = 4;
+    else if (rate > 1000)
+        rate = 1000;
 
-        data = 1000 / rate - 1;
-        if (i2c_write(st.hw->addr, st.reg->rate_div, 1, &data))
-            return -1;
+    data = 1000 / rate - 1;
+    if (i2c_write(st.hw->addr, st.reg->rate_div, 1, &data))
+        return -1;
 
-        st.chip_cfg.sample_rate = 1000 / (1 + data);
+    st.chip_cfg.sample_rate = 1000 / (1 + data);
 
 #ifdef AK89xx_SECONDARY
-        mpu_set_compass_sample_rate(min(st.chip_cfg.compass_sample_rate, MAX_COMPASS_SAMPLE_RATE));
+    mpu_set_compass_sample_rate(min(st.chip_cfg.compass_sample_rate, MAX_COMPASS_SAMPLE_RATE));
 #endif
 
-        /* Automatically set LPF to 1/2 sampling rate. */
-        mpu_set_lpf(st.chip_cfg.sample_rate >> 1);
-        return 0;
-    }
+    /* Automatically set LPF to 1/2 sampling rate. */
+    //mpu_set_lpf(st.chip_cfg.sample_rate >> 1);
+    return 0;
+    //}
 }
 
 /**

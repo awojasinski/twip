@@ -50,6 +50,9 @@ target_link_libraries(invensense
     PRIVATE
         hal
         cli
+        encoder
+        logger
+        control
         ${CMAKE_CURRENT_SOURCE_DIR}/mpl/libmpllib.a
 )
 

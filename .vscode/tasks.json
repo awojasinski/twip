@@ -16,6 +16,20 @@
             }
         },
         {
+            "label": "Clean",
+            "type": "shell",
+            "command": "make clean",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build"
+            },
+            "problemMatcher": [],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
             "label": "Load Firmware",
             "type": "shell",
             "command": "STM32_Programmer_CLI -c port=SWD -w ${workspaceFolder}/build/bin/twip.bin 0x08000000 -hardRst",

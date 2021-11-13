@@ -45,7 +45,6 @@ target_link_libraries(cli
         hal
         uart
         fifo
-        mpu9250
         encoder
         control
 )

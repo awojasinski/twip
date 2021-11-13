@@ -4,7 +4,7 @@
     See included License.txt for License information.
  $
  */
- 
+
 /**
  *   @defgroup  Data_Builder data_builder
  *   @brief     Motion Library - Data Builder
@@ -33,13 +33,15 @@
 
 typedef inv_error_t (*inv_process_cb_func)(struct inv_sensor_cal_t *data);
 
-struct process_t {
+struct process_t
+{
     inv_process_cb_func func;
     int priority;
     int data_required;
 };
 
-struct inv_db_save_t {
+struct inv_db_save_t
+{
     /** Compass Bias in Chip Frame in Hardware units scaled by 2^16 */
     long compass_bias[3];
     /** Gyro Bias in Chip Frame in Hardware units scaled by 2^16 */
@@ -59,7 +61,8 @@ struct inv_db_save_t {
     int compass_accuracy;
 };
 
-struct inv_data_builder_t {
+struct inv_data_builder_t
+{
     int num_cb;
     struct process_t process[INV_MAX_DATA_CB];
     struct inv_db_save_t save;
@@ -112,7 +115,8 @@ static inv_error_t inv_db_load_func(const unsigned char *data)
     sensors.accel.accuracy = inv_data_builder.save.accel_accuracy;
     sensors.compass.accuracy = inv_data_builder.save.compass_accuracy;
     // TODO
-    if (sensors.compass.accuracy == 3) {
+    if (sensors.compass.accuracy == 3)
+    {
         inv_set_compass_bias_found(1);
     }
     return INV_SUCCESS;
@@ -178,7 +182,7 @@ long inv_get_compass_sensitivity(void)
 *            standard units (dps, uT, g).
 */
 void set_sensor_orientation_and_scale(struct inv_single_sensor_t *sensor,
-                                 int orientation, long sensitivity)
+                                      int orientation, long sensitivity)
 {
     sensor->sensitivity = sensitivity;
     sensor->orientation = orientation;
@@ -196,7 +200,8 @@ void set_sensor_orientation_and_scale(struct inv_single_sensor_t *sensor,
 void inv_set_gyro_orientation_and_scale(int orientation, long sensitivity)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_G_ORIENT;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(&orientation, sizeof(orientation), 1, inv_data_builder.file);
@@ -213,7 +218,8 @@ void inv_set_gyro_orientation_and_scale(int orientation, long sensitivity)
 void inv_set_gyro_sample_rate(long sample_rate_us)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_G_SAMPLE_RATE;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(&sample_rate_us, sizeof(sample_rate_us), 1, inv_data_builder.file);
@@ -221,7 +227,8 @@ void inv_set_gyro_sample_rate(long sample_rate_us)
 #endif
     sensors.gyro.sample_rate_us = sample_rate_us;
     sensors.gyro.sample_rate_ms = sample_rate_us / 1000;
-    if (sensors.gyro.bandwidth == 0) {
+    if (sensors.gyro.bandwidth == 0)
+    {
         sensors.gyro.bandwidth = (int)(1000000L / sample_rate_us);
     }
 }
@@ -232,7 +239,8 @@ void inv_set_gyro_sample_rate(long sample_rate_us)
 void inv_set_accel_sample_rate(long sample_rate_us)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_A_SAMPLE_RATE;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(&sample_rate_us, sizeof(sample_rate_us), 1, inv_data_builder.file);
@@ -240,7 +248,8 @@ void inv_set_accel_sample_rate(long sample_rate_us)
 #endif
     sensors.accel.sample_rate_us = sample_rate_us;
     sensors.accel.sample_rate_ms = sample_rate_us / 1000;
-    if (sensors.accel.bandwidth == 0) {
+    if (sensors.accel.bandwidth == 0)
+    {
         sensors.accel.bandwidth = (int)(1000000L / sample_rate_us);
     }
 }
@@ -251,7 +260,8 @@ void inv_set_accel_sample_rate(long sample_rate_us)
 void inv_set_compass_sample_rate(long sample_rate_us)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_C_SAMPLE_RATE;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(&sample_rate_us, sizeof(sample_rate_us), 1, inv_data_builder.file);
@@ -259,24 +269,25 @@ void inv_set_compass_sample_rate(long sample_rate_us)
 #endif
     sensors.compass.sample_rate_us = sample_rate_us;
     sensors.compass.sample_rate_ms = sample_rate_us / 1000;
-    if (sensors.compass.bandwidth == 0) {
+    if (sensors.compass.bandwidth == 0)
+    {
         sensors.compass.bandwidth = (int)(1000000L / sample_rate_us);
     }
 }
 
 void inv_get_gyro_sample_rate_ms(long *sample_rate_ms)
 {
-	*sample_rate_ms = sensors.gyro.sample_rate_ms;
+    *sample_rate_ms = sensors.gyro.sample_rate_ms;
 }
 
 void inv_get_accel_sample_rate_ms(long *sample_rate_ms)
 {
-	*sample_rate_ms = sensors.accel.sample_rate_ms;
+    *sample_rate_ms = sensors.accel.sample_rate_ms;
 }
 
 void inv_get_compass_sample_rate_ms(long *sample_rate_ms)
 {
-	*sample_rate_ms = sensors.compass.sample_rate_ms;
+    *sample_rate_ms = sensors.compass.sample_rate_ms;
 }
 
 /** Set Quat Sample rate in micro seconds.
@@ -285,7 +296,8 @@ void inv_get_compass_sample_rate_ms(long *sample_rate_ms)
 void inv_set_quat_sample_rate(long sample_rate_us)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_Q_SAMPLE_RATE;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(&sample_rate_us, sizeof(sample_rate_us), 1, inv_data_builder.file);
@@ -350,20 +362,26 @@ int inv_get_accel_on()
 inv_time_t inv_get_last_timestamp()
 {
     inv_time_t timestamp = 0;
-    if (sensors.accel.status & INV_SENSOR_ON) {
+    if (sensors.accel.status & INV_SENSOR_ON)
+    {
         timestamp = sensors.accel.timestamp;
     }
-    if (sensors.gyro.status & INV_SENSOR_ON) {
-        if (timestamp < sensors.gyro.timestamp) {
+    if (sensors.gyro.status & INV_SENSOR_ON)
+    {
+        if (timestamp < sensors.gyro.timestamp)
+        {
             timestamp = sensors.gyro.timestamp;
         }
     }
-    if (sensors.compass.status & INV_SENSOR_ON) {
-        if (timestamp < sensors.compass.timestamp) {
+    if (sensors.compass.status & INV_SENSOR_ON)
+    {
+        if (timestamp < sensors.compass.timestamp)
+        {
             timestamp = sensors.compass.timestamp;
         }
     }
-    if (sensors.temp.status & INV_SENSOR_ON) {
+    if (sensors.temp.status & INV_SENSOR_ON)
+    {
         if (timestamp < sensors.temp.timestamp)
             timestamp = sensors.temp.timestamp;
     }
@@ -382,7 +400,8 @@ inv_time_t inv_get_last_timestamp()
 void inv_set_accel_orientation_and_scale(int orientation, long sensitivity)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_A_ORIENT;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(&orientation, sizeof(orientation), 1, inv_data_builder.file);
@@ -405,7 +424,8 @@ void inv_set_accel_orientation_and_scale(int orientation, long sensitivity)
 void inv_set_compass_orientation_and_scale(int orientation, long sensitivity)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_C_ORIENT;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(&orientation, sizeof(orientation), 1, inv_data_builder.file);
@@ -454,14 +474,16 @@ void inv_apply_calibration(struct inv_single_sensor_t *sensor, const long *bias)
 */
 void inv_get_compass_bias(long *bias)
 {
-    if (bias != NULL) {
+    if (bias != NULL)
+    {
         memcpy(bias, inv_data_builder.save.compass_bias, sizeof(inv_data_builder.save.compass_bias));
     }
 }
 
 void inv_set_compass_bias(const long *bias, int accuracy)
 {
-    if (memcmp(inv_data_builder.save.compass_bias, bias, sizeof(inv_data_builder.save.compass_bias))) {
+    if (memcmp(inv_data_builder.save.compass_bias, bias, sizeof(inv_data_builder.save.compass_bias)))
+    {
         memcpy(inv_data_builder.save.compass_bias, bias, sizeof(inv_data_builder.save.compass_bias));
         inv_apply_calibration(&sensors.compass, inv_data_builder.save.compass_bias);
     }
@@ -478,7 +500,8 @@ void inv_set_compass_disturbance(int dist)
     inv_data_builder.compass_disturbance = dist;
 }
 
-int inv_get_compass_disturbance(void) {
+int inv_get_compass_disturbance(void)
+{
     return inv_data_builder.compass_disturbance;
 }
 /** Sets the accel bias.
@@ -487,8 +510,10 @@ int inv_get_compass_disturbance(void) {
 */
 void inv_set_accel_bias(const long *bias, int accuracy)
 {
-    if (bias) {
-        if (memcmp(inv_data_builder.save.accel_bias, bias, sizeof(inv_data_builder.save.accel_bias))) {
+    if (bias)
+    {
+        if (memcmp(inv_data_builder.save.accel_bias, bias, sizeof(inv_data_builder.save.accel_bias)))
+        {
             memcpy(inv_data_builder.save.accel_bias, bias, sizeof(inv_data_builder.save.accel_bias));
             inv_apply_calibration(&sensors.accel, inv_data_builder.save.accel_bias);
         }
@@ -515,14 +540,18 @@ void inv_set_accel_accuracy(int accuracy)
 */
 void inv_set_accel_bias_mask(const long *bias, int accuracy, int mask)
 {
-    if (bias) {
-        if (mask & 1){
+    if (bias)
+    {
+        if (mask & 1)
+        {
             inv_data_builder.save.accel_bias[0] = bias[0];
         }
-        if (mask & 2){
+        if (mask & 2)
+        {
             inv_data_builder.save.accel_bias[1] = bias[1];
         }
-        if (mask & 4){
+        if (mask & 4)
+        {
             inv_data_builder.save.accel_bias[2] = bias[2];
         }
 
@@ -533,7 +562,6 @@ void inv_set_accel_bias_mask(const long *bias, int accuracy, int mask)
     inv_set_message(INV_MSG_NEW_AB_EVENT, INV_MSG_NEW_AB_EVENT, 0);
 }
 
-
 /** Sets the gyro bias
 * @param[in] bias Gyro bias in hardware units scaled by 2^16. In chip mounting frame.
 *            Length 3.
@@ -541,8 +569,10 @@ void inv_set_accel_bias_mask(const long *bias, int accuracy, int mask)
 */
 void inv_set_gyro_bias(const long *bias, int accuracy)
 {
-    if (bias != NULL) {
-        if (memcmp(inv_data_builder.save.gyro_bias, bias, sizeof(inv_data_builder.save.gyro_bias))) {
+    if (bias != NULL)
+    {
+        if (memcmp(inv_data_builder.save.gyro_bias, bias, sizeof(inv_data_builder.save.gyro_bias)))
+        {
             memcpy(inv_data_builder.save.gyro_bias, bias, sizeof(inv_data_builder.save.gyro_bias));
             inv_apply_calibration(&sensors.gyro, inv_data_builder.save.gyro_bias);
         }
@@ -613,26 +643,27 @@ void inv_get_accel_bias(long *bias, long *temp)
         temp[0] = inv_data_builder.save.accel_temp;
 }
 
-/** 
+/**
  *  Record new accel data for use when inv_execute_on_data() is called
- *  @param[in]  accel accel data. 
- *              Length 3. 
- *              Calibrated data is in m/s^2 scaled by 2^16 in body frame. 
+ *  @param[in]  accel accel data.
+ *              Length 3.
+ *              Calibrated data is in m/s^2 scaled by 2^16 in body frame.
  *              Raw data is in device units in chip mounting frame.
- *  @param[in]  status 
- *              Lower 2 bits are the accuracy, with 0 being inaccurate, and 3 
+ *  @param[in]  status
+ *              Lower 2 bits are the accuracy, with 0 being inaccurate, and 3
  *              being most accurate.
- *              The upper bit INV_CALIBRATED, is set if the data was calibrated 
- *              outside MPL and it is not set if the data being passed is raw. 
+ *              The upper bit INV_CALIBRATED, is set if the data was calibrated
+ *              outside MPL and it is not set if the data being passed is raw.
  *              Raw data should be in device units, typically in a 16-bit range.
- *  @param[in]  timestamp 
+ *  @param[in]  timestamp
  *              Monotonic time stamp, for Android it's in nanoseconds.
  *  @return     Returns INV_SUCCESS if successful or an error code if not.
  */
 inv_error_t inv_build_accel(const long *accel, int status, inv_time_t timestamp)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_ACCEL;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(accel, sizeof(accel[0]), 3, inv_data_builder.file);
@@ -640,13 +671,16 @@ inv_error_t inv_build_accel(const long *accel, int status, inv_time_t timestamp)
     }
 #endif
 
-    if ((status & INV_CALIBRATED) == 0) {
+    if ((status & INV_CALIBRATED) == 0)
+    {
         sensors.accel.raw[0] = (short)accel[0];
         sensors.accel.raw[1] = (short)accel[1];
         sensors.accel.raw[2] = (short)accel[2];
         sensors.accel.status |= INV_RAW_DATA;
         inv_apply_calibration(&sensors.accel, inv_data_builder.save.accel_bias);
-    } else {
+    }
+    else
+    {
         sensors.accel.calibrated[0] = accel[0];
         sensors.accel.calibrated[1] = accel[1];
         sensors.accel.calibrated[2] = accel[2];
@@ -671,7 +705,8 @@ inv_error_t inv_build_accel(const long *accel, int status, inv_time_t timestamp)
 inv_error_t inv_build_gyro(const short *gyro, inv_time_t timestamp)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_GYRO;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(gyro, sizeof(gyro[0]), 3, inv_data_builder.file);
@@ -703,7 +738,8 @@ inv_error_t inv_build_compass(const long *compass, int status,
                               inv_time_t timestamp)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_COMPASS;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(compass, sizeof(compass[0]), 3, inv_data_builder.file);
@@ -711,7 +747,8 @@ inv_error_t inv_build_compass(const long *compass, int status,
     }
 #endif
 
-    if ((status & INV_CALIBRATED) == 0) {
+    if ((status & INV_CALIBRATED) == 0)
+    {
         long data[3];
         inv_set_compass_soft_iron_input_data(compass);
         inv_get_compass_soft_iron_output_data(data);
@@ -720,7 +757,9 @@ inv_error_t inv_build_compass(const long *compass, int status,
         sensors.compass.raw[2] = (short)data[2];
         inv_apply_calibration(&sensors.compass, inv_data_builder.save.compass_bias);
         sensors.compass.status |= INV_RAW_DATA;
-    } else {
+    }
+    else
+    {
         sensors.compass.calibrated[0] = compass[0];
         sensors.compass.calibrated[1] = compass[1];
         sensors.compass.calibrated[2] = compass[2];
@@ -744,7 +783,8 @@ inv_error_t inv_build_compass(const long *compass, int status,
 inv_error_t inv_build_temp(const long temp, inv_time_t timestamp)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_TEMPERATURE;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(&temp, sizeof(temp), 1, inv_data_builder.file);
@@ -760,8 +800,8 @@ inv_error_t inv_build_temp(const long temp, inv_time_t timestamp)
     return INV_SUCCESS;
 }
 /** quaternion data
-* @param[in] quat Quaternion data. 2^30 = 1.0 or 2^14=1 for 16-bit data. 
-*                 Real part first. Length 4.  
+* @param[in] quat Quaternion data. 2^30 = 1.0 or 2^14=1 for 16-bit data.
+*                 Real part first. Length 4.
 * @param[in] status number of axis, 16-bit or 32-bit
 * @param[in] timestamp
 * @param[in]  timestamp   Monotonic time stamp; for Android it's in
@@ -772,14 +812,15 @@ inv_error_t inv_build_temp(const long temp, inv_time_t timestamp)
 inv_error_t inv_build_quat(const long *quat, int status, inv_time_t timestamp)
 {
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_QUAT;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
         fwrite(quat, sizeof(quat[0]), 4, inv_data_builder.file);
         fwrite(&timestamp, sizeof(timestamp), 1, inv_data_builder.file);
     }
 #endif
-    
+
     memcpy(sensors.quat.raw, quat, sizeof(sensors.quat.raw));
     sensors.quat.timestamp = timestamp;
     sensors.quat.status |= INV_NEW_DATA | INV_RAW_DATA | INV_SENSOR_ON;
@@ -848,25 +889,32 @@ inv_error_t inv_register_data_cb(
 
     // Make sure we haven't registered this function already
     // Or used the same priority
-    for (kk = 0; kk < inv_data_builder.num_cb; ++kk) {
+    for (kk = 0; kk < inv_data_builder.num_cb; ++kk)
+    {
         if ((inv_data_builder.process[kk].func == func) ||
-                (inv_data_builder.process[kk].priority == priority)) {
-            return INV_ERROR_INVALID_PARAMETER;    //fixme give a warning
+            (inv_data_builder.process[kk].priority == priority))
+        {
+            return INV_ERROR_INVALID_PARAMETER; //fixme give a warning
         }
     }
 
     // Make sure we have not filled up our number of allowable callbacks
-    if (inv_data_builder.num_cb <= INV_MAX_DATA_CB - 1) {
+    if (inv_data_builder.num_cb <= INV_MAX_DATA_CB - 1)
+    {
         kk = 0;
-        if (inv_data_builder.num_cb != 0) {
+        if (inv_data_builder.num_cb != 0)
+        {
             // set kk to be where this new callback goes in the array
             while ((kk < inv_data_builder.num_cb) &&
-                    (inv_data_builder.process[kk].priority < priority)) {
+                   (inv_data_builder.process[kk].priority < priority))
+            {
                 kk++;
             }
-            if (kk != inv_data_builder.num_cb) {
+            if (kk != inv_data_builder.num_cb)
+            {
                 // We need to move the others
-                for (nn = inv_data_builder.num_cb; nn > kk; --nn) {
+                for (nn = inv_data_builder.num_cb; nn > kk; --nn)
+                {
                     inv_data_builder.process[nn] =
                         inv_data_builder.process[nn - 1];
                 }
@@ -877,7 +925,9 @@ inv_error_t inv_register_data_cb(
         inv_data_builder.process[kk].priority = priority;
         inv_data_builder.process[kk].data_required = sensor_type;
         inv_data_builder.num_cb++;
-    } else {
+    }
+    else
+    {
         MPL_LOGE("Unable to add feature callback as too many were already registered\n");
         result = INV_ERROR_MEMORY_EXAUSTED;
     }
@@ -901,10 +951,13 @@ inv_error_t inv_unregister_data_cb(
 {
     int kk, nn;
 
-    for (kk = 0; kk < inv_data_builder.num_cb; ++kk) {
-        if (inv_data_builder.process[kk].func == func) {
+    for (kk = 0; kk < inv_data_builder.num_cb; ++kk)
+    {
+        if (inv_data_builder.process[kk].func == func)
+        {
             // Delete this callback
-            for (nn = kk + 1; nn < inv_data_builder.num_cb; ++nn) {
+            for (nn = kk + 1; nn < inv_data_builder.num_cb; ++nn)
+            {
                 inv_data_builder.process[nn - 1] =
                     inv_data_builder.process[nn];
             }
@@ -913,7 +966,7 @@ inv_error_t inv_unregister_data_cb(
         }
     }
 
-    return INV_SUCCESS;    // We did not find the callback
+    return INV_SUCCESS; // We did not find the callback
 }
 
 /** After at least one of inv_build_gyro(), inv_build_accel(), or
@@ -929,7 +982,8 @@ inv_error_t inv_execute_on_data(void)
     int mode;
 
 #ifdef INV_PLAYBACK_DBG
-    if (inv_data_builder.debug_mode == RD_RECORD) {
+    if (inv_data_builder.debug_mode == RD_RECORD)
+    {
         int type = PLAYBACK_DBG_TYPE_EXECUTE;
         fwrite(&type, sizeof(type), 1, inv_data_builder.file);
     }
@@ -949,10 +1003,13 @@ inv_error_t inv_execute_on_data(void)
 
     first_error = INV_SUCCESS;
 
-    for (kk = 0; kk < inv_data_builder.num_cb; ++kk) {
-        if (mode & inv_data_builder.process[kk].data_required) {
+    for (kk = 0; kk < inv_data_builder.num_cb; ++kk)
+    {
+        if (mode & inv_data_builder.process[kk].data_required)
+        {
             result = inv_data_builder.process[kk].func(&sensors);
-            if (result && !first_error) {
+            if (result && !first_error)
+            {
                 first_error = result;
             }
         }
@@ -969,23 +1026,28 @@ inv_error_t inv_execute_on_data(void)
 static void inv_set_contiguous(void)
 {
     inv_time_t current_time = 0;
-    if (sensors.gyro.status & INV_NEW_DATA) {
+    if (sensors.gyro.status & INV_NEW_DATA)
+    {
         sensors.gyro.status |= INV_CONTIGUOUS;
         current_time = sensors.gyro.timestamp;
     }
-    if (sensors.accel.status & INV_NEW_DATA) {
+    if (sensors.accel.status & INV_NEW_DATA)
+    {
         sensors.accel.status |= INV_CONTIGUOUS;
         current_time = MAX(current_time, sensors.accel.timestamp);
     }
-    if (sensors.compass.status & INV_NEW_DATA) {
+    if (sensors.compass.status & INV_NEW_DATA)
+    {
         sensors.compass.status |= INV_CONTIGUOUS;
         current_time = MAX(current_time, sensors.compass.timestamp);
     }
-    if (sensors.temp.status & INV_NEW_DATA) {
+    if (sensors.temp.status & INV_NEW_DATA)
+    {
         sensors.temp.status |= INV_CONTIGUOUS;
         current_time = MAX(current_time, sensors.temp.timestamp);
     }
-    if (sensors.quat.status & INV_NEW_DATA) {
+    if (sensors.quat.status & INV_NEW_DATA)
+    {
         sensors.quat.status |= INV_CONTIGUOUS;
         current_time = MAX(current_time, sensors.quat.timestamp);
     }
@@ -1020,13 +1082,16 @@ static void inv_set_contiguous(void)
 */
 void inv_get_accel_set(long *data, int8_t *accuracy, inv_time_t *timestamp)
 {
-    if (data != NULL) {
+    if (data != NULL)
+    {
         memcpy(data, sensors.accel.calibrated, sizeof(sensors.accel.calibrated));
     }
-    if (timestamp != NULL) {
+    if (timestamp != NULL)
+    {
         *timestamp = sensors.accel.timestamp;
     }
-    if (accuracy != NULL) {
+    if (accuracy != NULL)
+    {
         *accuracy = sensors.accel.accuracy;
     }
 }
@@ -1039,10 +1104,12 @@ void inv_get_accel_set(long *data, int8_t *accuracy, inv_time_t *timestamp)
 void inv_get_gyro_set(long *data, int8_t *accuracy, inv_time_t *timestamp)
 {
     memcpy(data, sensors.gyro.calibrated, sizeof(sensors.gyro.calibrated));
-    if (timestamp != NULL) {
+    if (timestamp != NULL)
+    {
         *timestamp = sensors.gyro.timestamp;
     }
-    if (accuracy != NULL) {
+    if (accuracy != NULL)
+    {
         *accuracy = sensors.gyro.accuracy;
     }
 }
@@ -1055,10 +1122,12 @@ void inv_get_gyro_set(long *data, int8_t *accuracy, inv_time_t *timestamp)
 void inv_get_gyro_set_raw(long *data, int8_t *accuracy, inv_time_t *timestamp)
 {
     memcpy(data, sensors.gyro.raw_scaled, sizeof(sensors.gyro.raw_scaled));
-    if (timestamp != NULL) {
+    if (timestamp != NULL)
+    {
         *timestamp = sensors.gyro.timestamp;
     }
-    if (accuracy != NULL) {
+    if (accuracy != NULL)
+    {
         *accuracy = sensors.gyro.accuracy;
     }
 }
@@ -1079,10 +1148,12 @@ void inv_get_gyro(long *gyro)
 void inv_get_compass_set(long *data, int8_t *accuracy, inv_time_t *timestamp)
 {
     memcpy(data, sensors.compass.calibrated, sizeof(sensors.compass.calibrated));
-    if (timestamp != NULL) {
+    if (timestamp != NULL)
+    {
         *timestamp = sensors.compass.timestamp;
     }
-    if (accuracy != NULL) {
+    if (accuracy != NULL)
+    {
         if (inv_data_builder.compass_disturbance)
             *accuracy = 0;
         else
@@ -1149,9 +1220,11 @@ inv_error_t inv_get_accel_orient(int *orient)
 /** Gets the 3x3 compass transform matrix in 32 bit Q30 fixed point format.
  * @param[out] the pointer of the 3x3 matrix in Q30 format
 */
-void inv_get_compass_soft_iron_matrix_d(long *matrix) {
+void inv_get_compass_soft_iron_matrix_d(long *matrix)
+{
     int i;
-    for (i=0; i<9; i++)  {
+    for (i = 0; i < 9; i++)
+    {
         matrix[i] = sensors.soft_iron.matrix_d[i];
     }
 }
@@ -1159,9 +1232,11 @@ void inv_get_compass_soft_iron_matrix_d(long *matrix) {
 /** Sets the 3x3 compass transform matrix in 32 bit Q30 fixed point format.
  * @param[in] the pointer of the 3x3 matrix in Q30 format
 */
-void inv_set_compass_soft_iron_matrix_d(long *matrix)  {
+void inv_set_compass_soft_iron_matrix_d(long *matrix)
+{
     int i;
-    for (i=0; i<9; i++)  {
+    for (i = 0; i < 9; i++)
+    {
         // set the floating point matrix
         sensors.soft_iron.matrix_d[i] = matrix[i];
         // convert to Q30 format
@@ -1171,55 +1246,69 @@ void inv_set_compass_soft_iron_matrix_d(long *matrix)  {
 /** Gets the 3x3 compass transform matrix in 32 bit floating point format.
  * @param[out] the pointer of the 3x3 matrix in floating point format
 */
-void inv_get_compass_soft_iron_matrix_f(float *matrix)  {
+void inv_get_compass_soft_iron_matrix_f(float *matrix)
+{
     int i;
-    for (i=0; i<9; i++)  {
+    for (i = 0; i < 9; i++)
+    {
         matrix[i] = sensors.soft_iron.matrix_f[i];
     }
 }
 /** Sets the 3x3 compass transform matrix in 32 bit floating point format.
  * @param[in] the pointer of the 3x3 matrix in floating point format
 */
-void inv_set_compass_soft_iron_matrix_f(float *matrix)   {
+void inv_set_compass_soft_iron_matrix_f(float *matrix)
+{
     int i;
-    for (i=0; i<9; i++)  {
+    for (i = 0; i < 9; i++)
+    {
         // set the floating point matrix
         sensors.soft_iron.matrix_f[i] = matrix[i];
         // convert to Q30 format
-        sensors.soft_iron.matrix_d[i] = (long )(matrix[i]*ROT_MATRIX_SCALE_LONG);
+        sensors.soft_iron.matrix_d[i] = (long)(matrix[i] * ROT_MATRIX_SCALE_LONG);
     }
 }
 
 /** This subroutine gets the fixed point Q30 compass data after the soft iron transformation.
  * @param[out] the pointer of the 3x1 vector compass data in MPL format
 */
-void inv_get_compass_soft_iron_output_data(long *data) {
+void inv_get_compass_soft_iron_output_data(long *data)
+{
     int i;
-    for (i=0; i<3; i++)  {
+    for (i = 0; i < 3; i++)
+    {
         data[i] = sensors.soft_iron.trans[i];
     }
 }
 /** This subroutine gets the fixed point Q30 compass data before the soft iron transformation.
  * @param[out] the pointer of the 3x1 vector compass data in MPL format
 */
-void inv_get_compass_soft_iron_input_data(long *data)  {
+void inv_get_compass_soft_iron_input_data(long *data)
+{
     int i;
-    for (i=0; i<3; i++)  {
+    for (i = 0; i < 3; i++)
+    {
         data[i] = sensors.soft_iron.raw[i];
     }
 }
 /** This subroutine sets the compass raw data for the soft iron transformation.
  * @param[int] the pointer of the 3x1 vector compass raw data in MPL format
 */
-void inv_set_compass_soft_iron_input_data(const long *data)  {
+void inv_set_compass_soft_iron_input_data(const long *data)
+{
     int i;
-    for (i=0; i<3; i++)  {
+    for (i = 0; i < 3; i++)
+    {
         sensors.soft_iron.raw[i] = data[i];
     }
-    if (sensors.soft_iron.enable == 1)  {
+    if (sensors.soft_iron.enable == 1)
+    {
         mlMatrixVectorMult(sensors.soft_iron.matrix_d, data, sensors.soft_iron.trans);
-    } else {
-        for (i=0; i<3; i++)  {
+    }
+    else
+    {
+        for (i = 0; i < 3; i++)
+        {
             sensors.soft_iron.trans[i] = data[i];
         }
     }
@@ -1228,19 +1317,22 @@ void inv_set_compass_soft_iron_input_data(const long *data)  {
 /** This subroutine resets the the soft iron transformation to unity matrix and
  * disable the soft iron transformation process by default.
 */
-void inv_reset_compass_soft_iron_matrix(void)  {
+void inv_reset_compass_soft_iron_matrix(void)
+{
     int i;
-    for (i=0; i<9; i++) {
+    for (i = 0; i < 9; i++)
+    {
         sensors.soft_iron.matrix_f[i] = 0.0f;
     }
 
-    memset(&sensors.soft_iron.matrix_d,0,sizeof(sensors.soft_iron.matrix_d));
+    memset(&sensors.soft_iron.matrix_d, 0, sizeof(sensors.soft_iron.matrix_d));
 
-    for (i=0; i<3; i++)  {
+    for (i = 0; i < 3; i++)
+    {
         // set the floating point matrix
-        sensors.soft_iron.matrix_f[i*4] = 1.0;
+        sensors.soft_iron.matrix_f[i * 4] = 1.0;
         // set the fixed point matrix
-        sensors.soft_iron.matrix_d[i*4] = ROT_MATRIX_SCALE_LONG;
+        sensors.soft_iron.matrix_d[i * 4] = ROT_MATRIX_SCALE_LONG;
     }
 
     inv_disable_compass_soft_iron_matrix();
@@ -1248,13 +1340,15 @@ void inv_reset_compass_soft_iron_matrix(void)  {
 
 /** This subroutine enables the the soft iron transformation process.
 */
-void inv_enable_compass_soft_iron_matrix(void)   {
+void inv_enable_compass_soft_iron_matrix(void)
+{
     sensors.soft_iron.enable = 1;
 }
 
 /** This subroutine disables the the soft iron transformation process.
 */
-void inv_disable_compass_soft_iron_matrix(void)   {
+void inv_disable_compass_soft_iron_matrix(void)
+{
     sensors.soft_iron.enable = 0;
 }
 

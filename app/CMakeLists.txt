@@ -52,6 +52,8 @@ target_link_libraries(${PROJECT_NAME}
         encoder
         logger
         control
+        mpu9250
+        madgwick
 )
 
 target_link_options(${PROJECT_NAME}
