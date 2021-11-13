@@ -59,8 +59,9 @@ void control_init(TIM_HandleTypeDef *p_pwm, uint32_t ch_right, uint32_t ch_left)
  * @param[in] D     Value of the derivative part of the PID controler.
  * @param[in] N     Rolloff filter value.
  * @param[in] dt    Sampling time of the controler.
+ * @param[in] type  Type of PID controler used.
  */
-void control_pid_set(control_pid_t *p_pid, float P, float I, float D, uint8_t N, float dt);
+void control_pid_set(control_pid_t *p_pid, float P, float I, float D, uint8_t N, float dt, controler_type_t type);
 
 /** @brief Function for enabling saturation capability in given controler.
  *
