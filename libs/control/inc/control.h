@@ -29,18 +29,27 @@ typedef struct
     bool initialized; //< Flag for signaling initialization of the vectorl.
 } control_vect;
 
+/** @brief Structure describing ring buffer. */
+typedef struct
+{
+    float *buff;     ///< Pointer to dynamically allocated data
+    uint8_t len;     ///< Number of elements the buffer can hold
+    uint8_t index;   ///< Index of the most recently added value
+    int initialized; ///< Flag indicating if memory has been allocated for the buffer
+} ringbuf_t;
+
 /** @brief Structure describing controler. */
 typedef struct
 {
-    float dt;              //< Sampilng time.
-    int order;             //< Order of discrete-time transfer function of the controler.
-    control_vect num;      //< Vector with numerator of the discrete-time transfer function.
-    control_vect den;      //< Vector with denumeratr of the discrete-time transfer function.
-    control_vect in_buff;  //< Ring buffer that stores input signals for given controler.
-    control_vect out_buff; //< Ring buffer that stores output signals for given controler.
-    float min_limit;       //< Minmium value of the controlers output. Used when saturation in enabled.
-    float max_limit;       //< Maxmium value of the controlers output. Used when saturation in enabled.
-    bool saturation;       //< Bool value for enabling saturation in controler
+    float dt;           //< Sampilng time.
+    int order;          //< Order of discrete-time transfer function of the controler.
+    control_vect num;   //< Vector with numerator of the discrete-time transfer function.
+    control_vect den;   //< Vector with denumeratr of the discrete-time transfer function.
+    ringbuf_t in_buff;  //< Ring buffer that stores input signals for given controler.
+    ringbuf_t out_buff; //< Ring buffer that stores output signals for given controler.
+    float min_limit;    //< Minmium value of the controlers output. Used when saturation in enabled.
+    float max_limit;    //< Maxmium value of the controlers output. Used when saturation in enabled.
+    bool saturation;    //< Bool value for enabling saturation in controler
 } control_pid_t;
 
 /** @brief Function for initializing controler.

@@ -70,7 +70,7 @@ void main(void)
 void __balance_controller(void)
 {
     log_t log_data;
-    int8_t control;
+    float control;
     float angle_l, angle_r, wheels_angle, tilt;
 
     long euler[3];
@@ -97,14 +97,14 @@ void __balance_controller(void)
     // Limit control
     if (tilt > LIMIT_ANGLE || tilt < -LIMIT_ANGLE)
     {
-        control = 0;
+        control = 0.0f;
     }
 
-    control_dirve_motors(control, CONTROL_RIGHT_WHEEL);
-    control_dirve_motors(control, CONTROL_LEFT_WHEEL);
+    control_dirve_motors((int8_t)control, CONTROL_RIGHT_WHEEL);
+    control_dirve_motors((int8_t)control, CONTROL_LEFT_WHEEL);
 
     log_data.euler = (long)(tilt * 65536.f);
-    log_data.control = control;
+    log_data.control = (int8_t)control;
     log_data.velo_l = (long)(encoder_get_velo(&encoder_left) * 65536.f);
     log_data.velo_r = (long)(encoder_get_velo(&encoder_right) * 65536.f);
 
